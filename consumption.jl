@@ -3,9 +3,9 @@ using Distributions
 using UnicodePlots
 
 # Set up consumption process
-μ = [2, 1] # Mean consumption
+μ = [2, -2] # Mean consumption
 σ = [1, 2] # Var consumption
-A = [0.99 0.01; 0.05 0.95] # Transition matrix
+A = [0.8 0.2; 0.05 0.95] # Transition matrix
 B = [Normal(μ[1], σ[1]), Normal(μ[2], σ[1])] # Emission densities
 π = [0.5, 0.5] # Initial state probabilities
 
@@ -33,13 +33,10 @@ function consumption(T)
     return c, s
 end
 
-c, s = consumption(100)
+c, s = consumption(10)
 
 # Compute forward likelihood
-function likelihood(c)
-    # Initialize likelihood
-    ℓ = 0
-
+function likelihood(c; rescale=false)
     # Get params
     T = length(c)
     N = length(B)
@@ -59,12 +56,20 @@ function likelihood(c)
 
             α[i, t] *= pdf(B[i], c[t])
         end
+
+        if rescale
+            α[:, t] /= sum(α[:, t], dims=1)
+        end
     end
+
+    # asum = sum(α, dims=1)
 
     return α
 end
 
-# likelihood(c)
+α = likelihood(c, rescale = true)
+
+display(α)
 
 function backward(c)
     T = length(c)
@@ -96,8 +101,11 @@ probs = map(i -> backward(c[1:i]), 1:length(c))
 p1 = [x[1] for x in probs]
 p2 = [x[2] for x in probs]
 
-println("True state")
-lineplot(s) |> display
+println("Consumption")
+lineplot(c) |> display
+
+#println("True state")
+#lineplot(s) |> display
 
 println("State 1 probability")
 lineplot(p1) |> display
