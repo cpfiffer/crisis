@@ -36,14 +36,14 @@ function returns(s, N)
     R[2:end] = μ[s][2:end] + β .* R[1] + ε[2:end]
 
     return R
-end     
+end
 
 function simulate(T, n_sims, n_firms)
     s = zeros(Int64, T)
     R = zeros(T, n_firms)
 
     s[1] = rand(Categorical(Π))
-    
+
     for t in 2:T
         s[t] = rand(Categorical(A[s[t-1], :]))
     end
