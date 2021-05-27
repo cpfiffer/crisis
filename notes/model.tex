@@ -1,10 +1,13 @@
 \documentclass{article}
 
 \title{Crisis Learning}
+\author{Cameron Pfiffer}
 
 \usepackage{amsmath}
 \usepackage{palatino}
 \usepackage{tikz}
+\usepackage{amssymb}
+
 \usetikzlibrary{positioning, calc, 
 shapes.geometric, shapes, 
 shapes.multipart, arrows.meta, 
@@ -26,25 +29,43 @@ external, trees}
 
 \maketitle
 
-Howdy hey, gang.
+Howdy hey, gang. The goal of this document is to describe the rough shape of an economy with a simple state-based structure. 
 
-\begin{figure}[p]
+\section{Model styles}
+
+In all models, it is assumed that the initial state distribution is categorically distributed with probabilities $\Pi = [\pi_1, \pi_2]$. We'll keep it simple for now and use only two possible states, but in general everything should function with an arbitrary number of states. 
+
+\subsection{Simple Gaussian}
+
+Figure \ref{fig:simple-gauss} demonstrates an extremely simple economy where a latent state variable $S_t$ evolves over time. In each possible state $S_t \in \mathbb{S}$, the location and scale parameters ($\mu(S_t)$ and $\Sigma(S_t)$) of the Gaussian return vector $R_t$ may vary:
+
+\begin{enumerate}
+    \item The degenerate constant mean/variance condition
+    $\Sigma(S_t)= \Sigma$ and a changing mean return vector, $\mu(S_t) = \mu$.
+    \item A constant variance term $\Sigma(S_t) = \Sigma(S_t') = \Sigma$ and a changing mean return vector, $\mu(S_t) \ne \mu(S_t')$.
+    \item A varying variance term $\Sigma(S_t) \ne \Sigma(S_t')$ and a constant mean return vector, $\mu(S_t) = \mu$.
+    \item The "everything changes" case where both $\mu(S_t)$ and $\Sigma(S_t)$ vary.
+\end{enumerate}
+
+Investors do not observe all elements of $R_t$ simultaneously. Rather, they observe them sequentially -- 
+
+\begin{figure}\label{fig:simple-gauss}
     \centering
 \begin{tikzpicture}
-    \node (1) {$S_0$};
-    \node [right =of 1] (2) {$S_1$};
-    \node [right =of 2] (3) {$S_2$};
+    \node [circle,draw=black,fill=lightgray](1) {$S_0$};
+    \node [circle,draw=black,fill=lightgray,right =of 1] (2) {$S_1$};
+    \node [circle,draw=black,fill=lightgray,right =of 2] (3) {$S_2$};
     \node [right =of 3] (4) {$\dots$};
-    \node [right =of 4] (5) {$S_t$};
+    \node [circle,draw=black,fill=lightgray,right =of 4] (5) {$S_t$};
     
     \draw[Arrow] (1.east) -- (2.west);
     \draw[Arrow] (2.east) -- (3.west);
     \draw[Arrow] (3.east) -- (4.west);
     \draw[Arrow] (4.east) -- (5.west);
 
-    \node [below =of 2] (6) {$R_1$};
-    \node [below =of 3] (7) {$R_2$};
-    \node [below =of 5] (9) {$R_t$};
+    \node [circle,draw=black,below =of 2] (6) {$R_1$};
+    \node [circle,draw=black,below =of 3] (7) {$R_2$};
+    \node [circle,draw=black,below =of 5] (9) {$R_t$};
     
     \draw[Arrow] (2.south) -- (6.north);
     \draw[Arrow] (3.south) -- (7.north);
@@ -52,6 +73,9 @@ Howdy hey, gang.
 
     % \draw[Arrow] (2) to [out=25, in=160] (4); 
 \end{tikzpicture}
+\caption{
+    Depiction of the underlying economic process. $S_t$ is a Markov state process drawn from $S_t \sim P(S_t, S_{t-1})$, while $R_t$ is a multivariate Gaussian of dimension $K$ (one for each firm). $R_t$ is Gaussian only conditional on $S_t$, i.e. $R_t \mid S_t \sim N(\mu(S_t), \Sigma(S_t))$.
+}
 \end{figure}
 
 \end{document}
