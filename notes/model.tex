@@ -7,6 +7,7 @@
 \usepackage{palatino}
 \usepackage{tikz}
 \usepackage{amssymb}
+\usepackage{todonotes}
 
 \usetikzlibrary{positioning, calc, 
 shapes.geometric, shapes, 
@@ -16,6 +17,10 @@ external, trees}
 
 \begin{document}
 
+% Expectation operators
+\newcommand{\Var}{\text{Var}}
+
+% TIKZ crap
 \tikzstyle{Arrow} = [
 	thick, 
 	decoration={
@@ -47,7 +52,7 @@ Figure \ref{fig:simple-gauss} demonstrates an extremely simple economy where a l
     \item The "everything changes" case where both $\mu(S_t)$ and $\Sigma(S_t)$ vary.
 \end{enumerate}
 
-Investors do not observe all elements of $R_t$ simultaneously. Rather, they observe them sequentially -- 
+Regardless of the choice of method above, going forward I will simply denote means and variances as $\mu$ and $\Sigma$ to reduce notational costs, but keep in mind that they are implicit functions of macroeconomic state $S_t$.
 
 \begin{figure}\label{fig:simple-gauss}
     \centering
@@ -63,19 +68,92 @@ Investors do not observe all elements of $R_t$ simultaneously. Rather, they obse
     \draw[Arrow] (3.east) -- (4.west);
     \draw[Arrow] (4.east) -- (5.west);
 
-    \node [circle,draw=black,below =of 2] (6) {$R_1$};
-    \node [circle,draw=black,below =of 3] (7) {$R_2$};
-    \node [circle,draw=black,below =of 5] (9) {$R_t$};
+    % \node [circle,draw=black,fill=lightgray,below =of 2] (6) {$\Sigma(S_1)$};
+    % \node [circle,draw=black,fill=lightgray,below =of 3] (7) {$\Sigma(S_2)$};
+    % \node [circle,draw=black,fill=lightgray,below =of 5] (8) {$\Sigma(S_t)$};
+
+    % \node [circle,draw=black,fill=lightgray,below =of 6] (9) {$\mu(S_1)$};
+    % \node [circle,draw=black,fill=lightgray,below =of 7] (10) {$\mu(S_2)$};
+    % \node [circle,draw=black,fill=lightgray,below =of 8] (11) {$\mu(S_t)$};
     
-    \draw[Arrow] (2.south) -- (6.north);
-    \draw[Arrow] (3.south) -- (7.north);
-    \draw[Arrow] (5.south) -- (9.north);
+    \node [circle,draw=black,below =of 2] (12) {$R_1$};
+    \node [circle,draw=black,below =of 3] (13) {$R_2$};
+    \node [circle,draw=black,below =of 5] (14) {$R_t$};
+    
+    % \node [circle,draw=black,below =of 2] (10) {$R_1$};
+    % \node [circle,draw=black,below =of 3] (11) {$R_2$};
+    % \node [circle,draw=black,below =of 5] (12) {$R_t$};
+    
+    \draw[Arrow] (2.south) -- (12.north);
+    \draw[Arrow] (3.south) -- (13.north);
+    \draw[Arrow] (5.south) -- (14.north);
+
+    % \draw[Arrow] (6.south) -- (9.north);
+    % \draw[Arrow] (7.south) -- (10.north);
+    % \draw[Arrow] (8.south) -- (11.north);
+
+    % \draw[Arrow] (9.south) -- (12.north);
+    % \draw[Arrow] (10.south) -- (13.north);
+    % \draw[Arrow] (11.south) -- (14.north);
 
     % \draw[Arrow] (2) to [out=25, in=160] (4); 
 \end{tikzpicture}
 \caption{
-    Depiction of the underlying economic process. $S_t$ is a Markov state process drawn from $S_t \sim P(S_t, S_{t-1})$, while $R_t$ is a multivariate Gaussian of dimension $K$ (one for each firm). $R_t$ is Gaussian only conditional on $S_t$, i.e. $R_t \mid S_t \sim N(\mu(S_t), \Sigma(S_t))$.
+    Depiction of the underlying economic process. $S_t$ is a Markov state process drawn from $S_t \sim P(S_t, S_{t-1})$, while $R_t$ is a multivariate Gaussian of dimension $N$ (one for each firm). $R_t$ is Gaussian only conditional on $S_t$, i.e. $R_t \mid S_t \sim \mathcal{N}(\mu(S_t), \Sigma(S_t))$.
 }
 \end{figure}
+
+Investors do not observe all elements of $R_t$ simultaneously. Rather, they observe them sequentially --- denote a partition of $R_t$ after $n \le N$ firms have been observed with $R_{t,1:n}$. Write the distributions of observed returns $R_{t,A}$ and the returns yet to be observed $R_{t,B}$ as the partitions
+
+\begin{align*}
+    R_t &= \begin{bmatrix}
+        R^A_t & R^B_t
+    \end{bmatrix}' \\ 
+    R^A_{t} &\sim \mathcal{N}(\mu^A, \Sigma^A) \\
+    R^B_{t} &\sim \mathcal{N}(\mu^B, \Sigma^B) \\
+\end{align*}
+
+\noindent where 
+
+$$
+E[R_t \mid S_t] = \mu = \begin{bmatrix}
+    \mu_A \\
+    \mu_B
+\end{bmatrix}
+$$
+
+The superscripts $A$ and $B$ are used to indicate a subsetting operation where $\mu^A = \mu_{1:n}$ and $\mu_B = \mu_{n+1:N}$. The covariance matrices can be similarly partitioned into a block matrix
+
+$$
+\Var[R_t \mid S_t] = \underset{N \times N}{\Sigma} = \begin{bmatrix}
+    \underset{n\times n}{\Sigma^A} & \underset{n\times N-n}{\Sigma^{AB}} \\
+    \underset{N-n\times n}{\Sigma^{BA}} & \underset{N-n\times N-n}{\Sigma^B} \\
+\end{bmatrix}
+$$
+
+Note, however, that $R_t^A$ is observed, and is no longer a stochastic variable. However, it was \textit{drawn} from a distribution correlated to $R_t^B$, and thus can be used as conditioning information to more precisely determine the distribution of the returns to be revealed, $R_t^B$. It can be shown \todo{Actually show this?} that, conditional on observing $R_t^A$, the distribution of $R_t^B$ is
+
+$$
+R_t^B \mid R_t^A, S_t \sim \mathcal{N} (\overline \mu^B, \overline \Sigma^B)
+$$
+
+\noindent for conditional parameters
+
+\begin{align*}
+    \overline \mu^B &= \mu^B + \Sigma^{BA} (\Sigma^{A})^{-1}(R_t^A - \mu^A)\\
+    \overline \Sigma^B &= \Sigma^B + \Sigma^{BA} (\Sigma^{A})^{-1}\Sigma^{AB}
+\end{align*}
+
+\newcommand{\Shape}{\mathbf{\Omega}}
+
+I assume that, for any state, the covariance matrix of firm payoffs is drawn from an inverse Wishart distribution parameterized by the shape matrix $\Shape$ and precision $\nu$. The distribution of $\Sigma$ holds even for cases where the covariance matrix does not change across states\footnote{In models where the covariance matrix changes with state (cases 3 and 4), the inverse Whishart distribution can still be used as the distribution collapses with certainty as $\nu \rightarrow \infty$.}. The matrix $\Shape$ determines the fundamental "shape" of the covariance structure, in that the mean of the distribution of $\Sigma$ is 
+
+$$
+E[\Sigma \mid S_t] = \frac{\Shape}{\nu - N - 1}
+$$
+
+The average \textit{covariance} can vary substantially in terms of scale as $\nu$ changes, but the average \textit{correlation} remains the same regardless of $\nu$. Any two draws $\Sigma_1$ and $\Sigma_2$ can have highly varied behavior. For example, $\Sigma_1$ might suggest a negative correlation in the payoffs of two firms, while $\Sigma_2$ could suggest a positive correlation. The inverse Wishart distribution is advantageous because the covariance matrix governing firm payoffs can vary meaningfully between states, and the distribution's properties are well-known.
+
+
 
 \end{document}
