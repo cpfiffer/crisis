@@ -52,9 +52,10 @@ for i in [5, 10, N]
     # println(mean(v))
 
     newdist = MvNormal(d.μ, Symmetric(mean(v)))
-    window = -10:0.1:10
-    points = [pdf(newdist, [a,b]) for a in window, b in window]
-    p = contour(points, title = string(diag(mean(v))))
-    !isdir("niw-plots") && mkpath("niw-plots")
-    savefig("niw-plots/$i.png")
+    println(newdist)
+    # window = -10:0.1:10
+    # points = [pdf(newdist, [a,b]) for a in window, b in window]
+    # p = contour(points, title = string(diag(mean(v))))
+    # !isdir("niw-plots") && mkpath("niw-plots")
+    # savefig("niw-plots/$i.png")
 end

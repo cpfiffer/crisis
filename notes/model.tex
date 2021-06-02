@@ -38,17 +38,19 @@ Howdy hey, gang. The goal of this document is to describe the rough shape of an 
 
 \section{Model styles}
 
-In all models, it is assumed that the initial state distribution is categorically distributed with probabilities $\Pi = [\pi_1, \pi_2]$. We'll keep it simple for now and use only two possible states, but in general everything should function with an arbitrary number of states. 
+In all models, it is assumed that the initial state distribution is categorically distributed with probabilities $\Pi = [\pi_1, \pi_2, \dots, \pi_Q]$ for $Q$ states.
+
+The state transition matrix is given by $A$. It is assumed that all know the transition matrix. 
 
 \subsection{Simple Gaussian}
 
-Figure \ref{fig:simple-gauss} demonstrates an extremely simple economy where a latent state variable $S_t$ evolves over time. In each possible state $S_t \in \mathbb{S}$, the location and scale parameters ($\mu(S_t)$ and $\Sigma(S_t)$) of the Gaussian return vector $R_t$ may vary:
+Figure \ref{fig:simple-gauss} demonstrates an extremely simple economy where a latent state variable $S_t$ evolves over time. In each possible state $S_t \in \mathbb{S}$, the location and scale parameters ($\mu(S_t)$ and $\Sigma(S_t)$) of the Gaussian payoff vector $f_t$ may vary:
 
 \begin{enumerate}
     \item The degenerate constant mean/variance condition
-    $\Sigma(S_t)= \Sigma$ and a changing mean return vector, $\mu(S_t) = \mu$.
-    \item A constant variance term $\Sigma(S_t) = \Sigma(S_t') = \Sigma$ and a changing mean return vector, $\mu(S_t) \ne \mu(S_t')$.
-    \item A varying variance term $\Sigma(S_t) \ne \Sigma(S_t')$ and a constant mean return vector, $\mu(S_t) = \mu$.
+    $\Sigma(S_t)= \Sigma$ and a changing mean payoff vector, $\mu(S_t) = \mu$.
+    \item A constant variance term $\Sigma(S_t) = \Sigma(S_t') = \Sigma$ and a changing mean payoff vector, $\mu(S_t) \ne \mu(S_t')$.
+    \item A varying variance term $\Sigma(S_t) \ne \Sigma(S_t')$ and a constant mean payoff vector, $\mu(S_t) = \mu$.
     \item The "everything changes" case where both $\mu(S_t)$ and $\Sigma(S_t)$ vary.
 \end{enumerate}
 
@@ -76,13 +78,13 @@ Regardless of the choice of method above, going forward I will simply denote mea
     % \node [circle,draw=black,fill=lightgray,below =of 7] (10) {$\mu(S_2)$};
     % \node [circle,draw=black,fill=lightgray,below =of 8] (11) {$\mu(S_t)$};
     
-    \node [circle,draw=black,below =of 2] (12) {$R_1$};
-    \node [circle,draw=black,below =of 3] (13) {$R_2$};
-    \node [circle,draw=black,below =of 5] (14) {$R_t$};
+    \node [circle,draw=black,below =of 2] (12) {$f_1$};
+    \node [circle,draw=black,below =of 3] (13) {$f_2$};
+    \node [circle,draw=black,below =of 5] (14) {$f_t$};
     
-    % \node [circle,draw=black,below =of 2] (10) {$R_1$};
-    % \node [circle,draw=black,below =of 3] (11) {$R_2$};
-    % \node [circle,draw=black,below =of 5] (12) {$R_t$};
+    % \node [circle,draw=black,below =of 2] (10) {$f_1$};
+    % \node [circle,draw=black,below =of 3] (11) {$f_2$};
+    % \node [circle,draw=black,below =of 5] (12) {$f_t$};
     
     \draw[Arrow] (2.south) -- (12.north);
     \draw[Arrow] (3.south) -- (13.north);
@@ -99,24 +101,24 @@ Regardless of the choice of method above, going forward I will simply denote mea
     % \draw[Arrow] (2) to [out=25, in=160] (4); 
 \end{tikzpicture}
 \caption{
-    Depiction of the underlying economic process. $S_t$ is a Markov state process drawn from $S_t \sim P(S_t, S_{t-1})$, while $R_t$ is a multivariate Gaussian of dimension $N$ (one for each firm). $R_t$ is Gaussian only conditional on $S_t$, i.e. $R_t \mid S_t \sim \mathcal{N}(\mu(S_t), \Sigma(S_t))$.
+    Depiction of the underlying economic process. $S_t$ is a Markov state process drawn from $S_t \sim P(S_t, S_{t-1})$, while $f_t$ is a multivariate Gaussian of dimension $N$ (one for each firm). Payoffs $f_t$ are Gaussian only conditional on $S_t$, i.e. $f_t \mid S_t \sim \mathcal{N}(\mu(S_t), \Sigma(S_t))$.
 }
 \end{figure}
 
-Investors do not observe all elements of $R_t$ simultaneously. Rather, they observe them sequentially --- denote a partition of $R_t$ after $n \le N$ firms have been observed with $R_{t,1:n}$. Write the distributions of observed returns $R_{t,A}$ and the returns yet to be observed $R_{t,B}$ as the partitions
+Investors do not observe all elements of $f_t$ simultaneously. Rather, they observe them sequentially --- denote a partition of $f_t$ after $n \le N$ firms have been observed with $f_{t,1:n}$. Write the distributions of observed payoffs $f_{t,A}$ and the payoffs yet to be observed $f_{t,B}$ as the partitions
 
 \begin{align*}
-    R_t &= \begin{bmatrix}
-        R^A_t & R^B_t
+    f_t &= \begin{bmatrix}
+        f^A_t & f^B_t
     \end{bmatrix}' \\ 
-    R^A_{t} &\sim \mathcal{N}(\mu^A, \Sigma^A) \\
-    R^B_{t} &\sim \mathcal{N}(\mu^B, \Sigma^B) \\
+    f^A_{t} &\sim \mathcal{N}(\mu^A, \Sigma^A) \\
+    f^B_{t} &\sim \mathcal{N}(\mu^B, \Sigma^B) \\
 \end{align*}
 
 \noindent where 
 
 $$
-E[R_t \mid S_t] = \mu = \begin{bmatrix}
+E[f_t \mid S_t] = \mu = \begin{bmatrix}
     \mu_A \\
     \mu_B
 \end{bmatrix}
@@ -125,22 +127,22 @@ $$
 The superscripts $A$ and $B$ are used to indicate a subsetting operation where $\mu^A = \mu_{1:n}$ and $\mu_B = \mu_{n+1:N}$. The covariance matrices can be similarly partitioned into a block matrix
 
 $$
-\Var[R_t \mid S_t] = \underset{N \times N}{\Sigma} = \begin{bmatrix}
+\Var[f_t \mid S_t] = \underset{N \times N}{\Sigma} = \begin{bmatrix}
     \underset{n\times n}{\Sigma^A} & \underset{n\times N-n}{\Sigma^{AB}} \\
     \underset{N-n\times n}{\Sigma^{BA}} & \underset{N-n\times N-n}{\Sigma^B} \\
 \end{bmatrix}
 $$
 
-Note, however, that $R_t^A$ is observed, and is no longer a stochastic variable. However, it was \textit{drawn} from a distribution correlated to $R_t^B$, and thus can be used as conditioning information to more precisely determine the distribution of the returns to be revealed, $R_t^B$. It can be shown \todo{Actually show this?} that, conditional on observing $R_t^A$, the distribution of $R_t^B$ is
+Note, however, that $f_t^A$ is observed, and is no longer a stochastic variable. However, it was \textit{drawn} from a distribution correlated to $f_t^B$, and thus can be used as conditioning information to more precisely determine the distribution of the payoffs to be revealed, $f_t^B$. It can be shown \todo{Actually show this?} that, conditional on observing $f_t^A$, the distribution of $f_t^B$ is
 
 $$
-R_t^B \mid R_t^A, S_t \sim \mathcal{N} (\overline \mu^B, \overline \Sigma^B)
+f_t^B \mid f_t^A, S_t \sim \mathcal{N} (\overline \mu^B, \overline \Sigma^B)
 $$
 
 \noindent for conditional parameters
 
 \begin{align*}
-    \overline \mu^B &= \mu^B + \Sigma^{BA} (\Sigma^{A})^{-1}(R_t^A - \mu^A)\\
+    \overline \mu^B &= \mu^B + \Sigma^{BA} (\Sigma^{A})^{-1}(f_t^A - \mu^A)\\
     \overline \Sigma^B &= \Sigma^B + \Sigma^{BA} (\Sigma^{A})^{-1}\Sigma^{AB}
 \end{align*}
 
@@ -154,6 +156,62 @@ $$
 
 The average \textit{covariance} can vary substantially in terms of scale as $\nu$ changes, but the average \textit{correlation} remains the same regardless of $\nu$. Any two draws $\Sigma_1$ and $\Sigma_2$ can have highly varied behavior. For example, $\Sigma_1$ might suggest a negative correlation in the payoffs of two firms, while $\Sigma_2$ could suggest a positive correlation. The inverse Wishart distribution is advantageous because the covariance matrix governing firm payoffs can vary meaningfully between states, and the distribution's properties are well-known.
 
+\subsection*{The joint density}
 
+\newcommand{\Slist}{S_0, \dots, S_t}
+\newcommand{\Flist}{f_0, \dots, f_{t-1}, f_{t}^A}
+\newcommand{\States}{\mathbf{S}}
+\newcommand{\Payoffs}{\mathbf{f}}
+
+The physical joint density of the economy is defined in terms of a particular set of states $\States = \Slist$ and a set of payoffs $\Payoffs = \Flist$. The chain rule of probability allows us to factor this probability as
+
+$$
+P(\States, \Payoffs, \Sigma, \mu) = P(\Payoffs \mid \States) P(\Sigma, \mu \mid \States) P(\States)
+$$
+
+The second part of the term above is a function of $A$ and $\Pi$. The first element of a particular path $\Slist$ is drawn using probabilities $\Pi$, and the underlying state transitions according to the entries in the matrix $A$. 
+
+$$
+P(\Slist) = P(\States) = P(S_0)P(S_1 \mid S_0) \dots P(S_t \mid S_{t-1})
+$$
+
+The term $P(S_0)$ is either $\pi_1$ or $\pi_2$, depending on $S_0$. Denote this as $\pi(S_0)$. Additionally, denote the transition probability from $S_{t-1}$ to $S_t$ as $A(S_{t-1}, S_t)$. The above equation can then be rewritten as
+
+\begin{align*}
+    P(\States) = \pi(S_0) \prod_{i=1}^t A(S_{i-1}, S_{i})
+\end{align*}
+
+The state space of $\States$ is $Q^t$. Each "path" of states $\States$ maps to an element on a discrete table of probabilities. Computing this table is computationally difficult but can be achieved with robust forward-backward passes.
+
+\subsubsection*{Prices}
+
+I'm not sure how to generate prices in this setup. I need to have some way of prices for different assets changing after the payoff is received, to capture learning-driven price drift.
+
+The first way to do this is simply to recognize that states are persistent in some way, so $S_t = H$ implies that the probabilitiy of having future high states is also high. In this case, the risk-neutral price of an asset is simply the discounted sum of future expected payoffs:
+
+$$
+P_{i,t} = E\Bigg[\sum_{j=1}^\infty \rho^{j} f_{i,t+j} \Bigg]
+$$
+
+Alternatively, it might be more canonical to use the SDF approach here. The SDF price has a couple of advantages. First, prices are set in accordance with risk aversion and with differences across agents. Second, I intend to use a computational approach anyway, which means that the distribution of $M_t$ doesn't have to be formally specified, but can be directly calculated from preferences.
+
+$$
+P_{i,t} = E\Bigg[\sum_{j=1}^\infty M_{t+j} f_{i,t+j} \Bigg]
+$$
+
+I could also apply a noisy rational equilibrium price which is linear in various signals. In Kazperczyk et al. (2016), this takes the form of an equilibrium price
+
+$$
+\tilde p_ = \frac{1}{r}(A + Bz + Cx)
+$$
+
+\noindent for factor shocks $z$ and supply shocks $x$. The issue with this particular model is that it (a) only works under very specific assumptions that I don't quite see how to expand yet and (b) is a strictly linear equilibrium price. The linearity causes all kinds of weird corner solutions. 
+
+Questions:
+
+\begin{enumerate}
+    \item Can I just compute everything?
+    \item Main topic/focus: learning across crises, attention + learning, how do rational inattention vs. sparsity impact things differently?
+\end{enumerate}
 
 \end{document}
