@@ -8,6 +8,7 @@
 \usepackage{tikz}
 \usepackage{amssymb}
 \usepackage{todonotes}
+\usepackage{optidef}
 
 \usetikzlibrary{positioning, calc, 
 shapes.geometric, shapes, 
@@ -60,10 +61,10 @@ Regardless of the choice of method above, going forward I will simply denote mea
     \centering
 \begin{tikzpicture}
     \node [circle,draw=black,fill=lightgray](1) {$S_0$};
-    \node [circle,draw=black,fill=lightgray,right =of 1] (2) {$S_1$};
-    \node [circle,draw=black,fill=lightgray,right =of 2] (3) {$S_2$};
+    \node [circle,draw=black,fill=lightgray,right = of 1] (2) {$S_1$};
+    \node [circle,draw=black,fill=lightgray,right = of 2] (3) {$S_2$};
     \node [right =of 3] (4) {$\dots$};
-    \node [circle,draw=black,fill=lightgray,right =of 4] (5) {$S_t$};
+    \node [circle,draw=black,fill=lightgray,right = of 4] (5) {$S_t$};
     
     \draw[Arrow] (1.east) -- (2.west);
     \draw[Arrow] (2.east) -- (3.west);
@@ -81,7 +82,10 @@ Regardless of the choice of method above, going forward I will simply denote mea
     \node [circle,draw=black,below =of 2] (12) {$f_1$};
     \node [circle,draw=black,below =of 3] (13) {$f_2$};
     \node [circle,draw=black,below =of 5] (14) {$f_t$};
-    
+
+    % \node [circle,fill=lightgray,draw=black,below right = 1cm and 0.05cm of 2] (15) {$\Delta c_1$};
+    % \node [circle,fill=lightgray,draw=black,below right = 1cm and 0.05cm of 3] (16) {$\Delta c_2$};
+    % \node [circle,fill=lightgray,draw=black,below right = 1cm and 0.05cm of 5] (17) {$\Delta c_t$};
     % \node [circle,draw=black,below =of 2] (10) {$f_1$};
     % \node [circle,draw=black,below =of 3] (11) {$f_2$};
     % \node [circle,draw=black,below =of 5] (12) {$f_t$};
@@ -89,6 +93,10 @@ Regardless of the choice of method above, going forward I will simply denote mea
     \draw[Arrow] (2.south) -- (12.north);
     \draw[Arrow] (3.south) -- (13.north);
     \draw[Arrow] (5.south) -- (14.north);
+
+    % \draw[Arrow] (2.south) -- (15.north);
+    % \draw[Arrow] (3.south) -- (16.north);
+    % \draw[Arrow] (5.south) -- (17.north);
 
     % \draw[Arrow] (6.south) -- (9.north);
     % \draw[Arrow] (7.south) -- (10.north);
@@ -185,33 +193,20 @@ The state space of $\States$ is $Q^t$. Each "path" of states $\States$ maps to a
 
 \subsubsection*{Prices}
 
-I'm not sure how to generate prices in this setup. I need to have some way of prices for different assets changing after the payoff is received, to capture learning-driven price drift.
+I assume for the moment that there is a representative agent investor with utility
 
-The first way to do this is simply to recognize that states are persistent in some way, so $S_t = H$ implies that the probabilitiy of having future high states is also high. In this case, the risk-neutral price of an asset is simply the discounted sum of future expected payoffs:
-
+\newcommand{\U}{\sum_{j=0}^\infty \rho^j u(C_{t+j})}
 $$
-P_{i,t} = E\Bigg[\sum_{j=1}^\infty \rho^{j} f_{i,t+j} \Bigg]
-$$
-
-Alternatively, it might be more canonical to use the SDF approach here. The SDF price has a couple of advantages. First, prices are set in accordance with risk aversion and with differences across agents. Second, I intend to use a computational approach anyway, which means that the distribution of $M_t$ doesn't have to be formally specified, but can be directly calculated from preferences.
-
-$$
-P_{i,t} = E\Bigg[\sum_{j=1}^\infty M_{t+j} f_{i,t+j} \Bigg]
+U = \U
 $$
 
-I could also apply a noisy rational equilibrium price which is linear in various signals. In Kazperczyk et al. (2016), this takes the form of an equilibrium price
+\noindent for a utility function 
 
 $$
-\tilde p_ = \frac{1}{r}(A + Bz + Cx)
+u(C_t) = \frac{C_t^{1-\gamma}}{1 - \gamma}
 $$
 
-\noindent for factor shocks $z$ and supply shocks $x$. The issue with this particular model is that it (a) only works under very specific assumptions that I don't quite see how to expand yet and (b) is a strictly linear equilibrium price. The linearity causes all kinds of weird corner solutions. 
+One way to model this economy is to allow wealth to differ in each time period, but this is generally a singificant amount of record keeping and seems to result in a particularly complex stochastic discount factor. 
 
-Questions:
-
-\begin{enumerate}
-    \item Can I just compute everything?
-    \item Main topic/focus: learning across crises, attention + learning, how do rational inattention vs. sparsity impact things differently?
-\end{enumerate}
 
 \end{document}

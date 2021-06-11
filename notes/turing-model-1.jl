@@ -15,6 +15,63 @@ A = [0.95 0.05; 0.05 0.95]
 next_state(A, s) = rand(Categorical(A[s, :]))
 state_prob(A, s1, s2) = log(A[s1,s2])
 
+mutable struct MarkovianFiltration{V<:AbstractVector, M}
+    N::Int            # Number of states
+    T::Int            # Length of observation sequence
+    π::V              # Initial state density
+    α::AbstractMatrix # alpha pass matrix
+    β::AbstractMatrix # beta pass matrix
+    A::AbstractMatrix # Transition matrix
+    b::AbstractMatrix # Cached likelihoods
+    B::M              # Emission densities
+end
+
+function MarkovianFiltration(N::Int, T::Int, π::Vector, A::AbstractMatrix, B::Vector{<:Function})
+    α = Array{Union{Missing, Float64}}(undef, N, T)
+    β = Array{Union{Missing, Float64}}(undef, N, T)
+    b = Array{Union{Missing, Float64}}(undef, N, T)
+
+    α[:] .= missing
+    β[:] .= missing
+    b[:] .= missing
+
+    return MarkovianFiltration(N, T, π, α, β, A, b, B)
+end
+
+"""
+Computes the likelihood matrix using the function
+
+b(k,j) = P(observation k at time t | state qj at time t)
+"""
+function likelihood!(mf::MarkovianFiltration, Y::Vector)
+    M = length(Y)
+
+    for i in 1:mf.N
+        for t in 1:M
+            if ismissing(mf.b[i,t])
+                mf.b[i, t] = mf.B[i](Y[i])
+            end
+        end
+    end
+
+    return mf.b[:, 1:M]
+end
+
+function forward!(mf::MarkovianFiltration, Y::Vector)
+    M = length(Y)
+
+    for i in 1:mf.N
+        mf.α[i,1] = mf.π .* mf.b[i,1]
+        for t in 2:M
+            if ismissing(mf.α[i,t])
+                mf.α[i,t] = sum(mf.α[:,t-1] .* mf.A[:, i])
+            end
+        end
+    end
+
+    return mf.α[i,t]
+end
+
 function PS(A, S)
     ℓ = log(π[S[1]])
     ℓ += mapreduce(t -> state_prob(A, S[t-1], S[t]), +, 2:length(S))

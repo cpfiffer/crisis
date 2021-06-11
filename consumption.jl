@@ -1,13 +1,112 @@
 # Imports
 using Distributions
 using UnicodePlots
+using Random
+Random.seed!(1)
 
 # Set up consumption process
-μ = [2, -2] # Mean consumption
-σ = [1, 2] # Var consumption
-A = [0.8 0.2; 0.05 0.95] # Transition matrix
-B = [Normal(μ[1], σ[1]), Normal(μ[2], σ[1])] # Emission densities
+μ = [2, 2] # Mean consumption
+σ = [1, 0.1] # Var consumption
+A = [0.6 0.4; 0.4 0.6] # Transition matrix
+B = [Normal(μ[1], σ[1]), Normal(μ[2], σ[2])] # Emission densities
 π = [0.5, 0.5] # Initial state probabilities
+
+mutable struct MarkovianFiltration{V<:AbstractVector, M}
+    N::Int            # Number of states
+    T::Int            # Length of observation sequence
+    π::V              # Initial state density
+    α::AbstractMatrix # alpha pass matrix
+    β::AbstractMatrix # beta pass matrix
+    A::AbstractMatrix # Transition matrix
+    b::AbstractMatrix # Cached likelihoods
+    B::M              # Emission densities
+end
+
+function MarkovianFiltration(
+    N::Int, 
+    T::Int, 
+    π::Vector, 
+    A::AbstractMatrix, 
+    B::Vector{<:Function}
+)
+    α = Array{Union{Missing, Float64}}(undef, N, T)
+    β = Array{Union{Missing, Float64}}(undef, N, T)
+    b = Array{Union{Missing, Float64}}(undef, N, T)
+
+    α[:] .= missing
+    β[:] .= missing
+    b[:] .= missing
+
+    return MarkovianFiltration(N, T, π, α, β, A, b, B)
+end
+
+"""
+Computes the likelihood matrix using the function
+
+b(k,j) = P(observation k at time t | state qj at time t)
+"""
+function likelihood!(mf::MarkovianFiltration, Y::Vector)
+    M = length(Y)
+
+    for i in 1:mf.N
+        for t in 1:M
+            if ismissing(mf.b[i,t])
+                mf.b[i, t] = mf.B[i](Y[t])
+            end
+        end
+    end
+
+    return mf.b[:, 1:M]
+end
+
+function forward!(mf::MarkovianFiltration, Y::Vector)
+    M = length(Y)
+
+    mf.α[:,1] = mf.π .* mf.b[:,1]
+
+    for t in 1:M
+        for i in 1:mf.N
+            if ismissing(mf.α[i,t])
+                mf.α[i,t] = 0
+                for j in 1:mf.N
+                    mf.α[i,t] += mf.α[j,t-1] * mf.A[i, j]
+                end
+                mf.α[i,t] *= mf.b[i,t]
+            end
+        end
+        mf.α[:,t] /= sum(mf.α[:,t])
+    end
+
+    return mf.α
+end
+
+function backward!(mf::MarkovianFiltration, Y::Vector)
+    M = length(Y)
+
+    mf.β[:,M] .= 1
+
+    for t in (M-1):-1:1
+        for i in 1:mf.N
+            for j in 1:mf.N
+                mf.β[i,t] = mf.A[i,j] * mf.b[j, t+1] * mf.β[j, t+1]
+            end
+        end
+
+        mf.β[:,t] /=  sum(mf.β[:,t])
+    end
+
+    return mf.β
+end
+
+function filtration(mf::MarkovianFiltration, Y::Vector)
+   likelihood!(mf, Y) 
+   forward!(mf, Y) 
+   backward!(mf, Y)
+
+   γ = mf.α .* mf.β ./ sum(mf.α, dims=1)
+
+   return γ ./ sum(γ, dims=1)
+end
 
 # Emission
 function emit(s)
@@ -33,7 +132,7 @@ function consumption(T)
     return c, s
 end
 
-c, s = consumption(10)
+c, s = consumption(100)
 
 # Compute forward likelihood
 function likelihood(c; rescale=false)
@@ -69,8 +168,6 @@ end
 
 α = likelihood(c, rescale = true)
 
-display(α)
-
 function backward(c)
     T = length(c)
     N = length(B)
@@ -94,23 +191,39 @@ function backward(c)
     return γ[:,end]
 end
 
-# prob = backward(c)
+prob = backward(c)
 
-probs = map(i -> backward(c[1:i]), 1:length(c))
+# probs = map(i -> backward(c[1:i]), 1:length(c))
 
-p1 = [x[1] for x in probs]
-p2 = [x[2] for x in probs]
+# p1 = [x[1] for x in probs]
+# p2 = [x[2] for x in probs]
 
-println("Consumption")
-lineplot(c) |> display
+# println("Consumption")
+# lineplot(c) |> display
 
 #println("True state")
 #lineplot(s) |> display
 
-println("State 1 probability")
-lineplot(p1) |> display
+# println("State 1 probability")
+# lineplot(p1) |> display
 
-println("State 2 probability")
-lineplot(p2) |> display
+# println("State 2 probability")
+# lineplot(p2) |> display
 
 #lineplot(c)
+
+mf = MarkovianFiltration(
+    length(B),
+    length(c),
+    π,
+    A,
+    map(d -> (x -> pdf(d, x)), B)
+)
+
+m = 10
+# likelihood!(mf, c[1:m])
+# forward!(mf, c[1:m])
+# backward!(mf, c[1:m])
+
+display(prob)
+display(filtration(mf, c))
