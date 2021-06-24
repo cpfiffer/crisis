@@ -151,7 +151,6 @@ p_true = conditional_prices(mu, sigma, 10_000, α, delta, w, gamma)
 R = p_expected[:, 2:end] ./ p_expected[:,1:end-1] .- 1
 
 splot = plot(S)
-
 price_plot = plot((p_expected')[:,1])
 
 plot(price_plot, splot)
