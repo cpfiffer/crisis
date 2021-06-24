@@ -4,21 +4,32 @@ using LinearAlgebra
 using StatsPlots
 using DataFrames
 
-n_assets = 5
+n_assets = 100
 n_states = 2
 
 pi = [0.5, 0.5]
 A = [
-    0.8 0.2;
-    0.2 0.8
+    0.90 0.10;
+    0.01 0.99
 ]
 
+# Stochastic parameters
 iw = InverseWishart(n_assets + 2, diagm(ones(n_assets)))
 mu = [randn(n_assets) .+ 1 for _ in 1:n_states]
-sigma = [rand(iw) ./ 3 for _ in 1:n_states]
+sigma = [rand(iw) for _ in 1:n_states]
+
+# Deterministic parameters
+# mu =[
+#     [1.5, 2.2],
+#     [1.6, 1.9],
+# ] ./ 5
+# sigma = [
+#     [2.0 0.25; 0.25 3.0],
+#     [3.0 -0.22; -0.22 3.1],
+# ]
 
 N = 100_000
-gamma = 2
+gamma = 0
 w = repeat([1/n_assets], n_assets)
 delta = 0.9
 
@@ -55,6 +66,18 @@ function hmm_payoffs(mu, sigma, N, A, state)
     return draws
 end
 
+function conditional_payoffs(mus, sigmas, N, probs)
+    dists = [MvNormal(mus[i], sigmas[i]) for i in 1:length(mus)]
+    s = rand(Categorical(probs), N)
+    draws = zeros(length(mus[1]), N)
+
+    for i in 1:N
+        draws[:,i] = rand(dists[s[i]])
+    end
+
+    return draws
+end
+
 function payoffs(mu, sigma, N)
     dist = MvNormal(mu, sigma)
     draws = rand(dist, N)
@@ -63,7 +86,7 @@ end
 
 function prices(delta, w, gamma, draws)
     m = w'exp.(draws) .^ (-gamma)
-    return delta .* mean(m .* draws, dims=2)
+    return vec(delta .* mean(m .* draws, dims=2))
 end
 
 function emit_density(f, dist)
@@ -77,7 +100,6 @@ function filtering(f, A, mus, sigmas, pi)
 
     # Generate distributions
     dists = [MvNormal(mus[i], sigmas[i]) for i in 1:K]
-    b = map(x -> (u -> pdf(x, u)), dists)
 
     # Preallocate likelihoods
     α = zeros(K, T)
@@ -110,12 +132,46 @@ function filtering(f, A, mus, sigmas, pi)
     return α, predicted
 end
 
+function conditional_prices(mu, sigma, N, probs, delta, w, gamma)
+    p = zeros(size(mu[1], 1), size(probs, 2))
+    for t in 1:size(probs, 2)
+        draws = conditional_payoffs(mu, sigma, N, probs[:,t])
+        p[:,t] = prices(delta, w, gamma, draws)
+    end
+    return p
+end
+
 S = hmm_states(A, 100, pi)
 f = hmm_emit(S, mu, sigma)
 α, predicted = filtering(f, A, mu, sigma, pi)
 
-display(α)
-display(predicted)
+p_expected = conditional_prices(mu, sigma, 10_000, predicted, delta, w, gamma)
+p_true = conditional_prices(mu, sigma, 10_000, α, delta, w, gamma)
+
+R = p_expected[:, 2:end] ./ p_expected[:,1:end-1] .- 1
+
+splot = plot(S)
+
+price_plot = plot((p_expected')[:,1])
+
+plot(price_plot, splot)
+# plot!(S .- 1)
+
+# draws1 = conditional_payoffs(mu, sigma, 10000, α[:,1])
+# p1 = prices(delta, w, gamma, draws1)
+
+# draws2 = conditional_payoffs(mu, sigma, 10000, predicted[:,1])
+# p2 = prices(delta, w, gamma, draws2)
+
+# df = DataFrame(
+#     p1 = p1,
+#     p2 = p2,
+#     r = p2 ./ p1 .- 1,
+
+# )
+
+# display(α)
+# display(predicted)
 
 # draws_1 = payoffs(mu[1], sigma[1], N)
 # draws_2 = payoffs(mu[2], sigma[2], N)
