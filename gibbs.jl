@@ -4,38 +4,44 @@ using Statistics
 using Parameters
 using StatsPlots
 using Random
+using StructArrays
+using ProgressMeter
 
 function posterior_mu(m0, V0, Σ, X)
     μ = vec(mean(X; dims=1))
     N = size(X, 1)
-    V0_inv = inv(V0)
-    Σ_inv = inv(Σ)
-    VN = Symmetric(inv(V0_inv + N .* Σ_inv))
-    mN = VN * (Σ_inv * (N .* μ)  + V0_inv * m0)
-    return MvNormal(mN, VN)
+
+    if N > 0
+        V0_inv = inv(V0)
+        Σ_inv = inv(Σ)
+        VN = Symmetric(inv(V0_inv + N .* Σ_inv))
+        mN = VN * (Σ_inv * (N .* μ)  + V0_inv * m0)
+        return MvNormal(mN, VN)
+    else
+        return MvNormal(m0, V0)
+    end
 end
 
 function posterior_variance(ν0, S0, μ, X)
     N = size(X, 1)
-    νN = ν0 + N
-    Sμ = sum((X[i,:]-μ) * (X[i,:] - μ)' for i in 1:N)
-    SN = S0 + Sμ
-    return InverseWishart(νN, SN)
+
+    if N > 0
+        νN = ν0 + N
+        Sμ = sum((X[i,:]-μ) * (X[i,:] - μ)' for i in 1:N)
+        SN = S0 + Sμ
+        return InverseWishart(νN, SN)
+    else
+        return InverseWishart(ν0, S0)
+    end
 end
 
-function mu_var_gibbs(priors, X; draw=nothing)
+function mu_var_gibbs(priors, X, k, draw)
     @unpack m0, V0, ν0, S0 = priors
-    local μ,Σ
 
-    if isnothing(draw)
-        μ = rand(MvNormal(m0, V0))
-        Σ = Symmetric(rand(InverseWishart(ν0, S0)))
-    else
-        @unpack μ, Σ = draw
-    end
+    Σ = Symmetric(rand(posterior_variance(ν0[k], S0[k], draw.μ[k], X)))
+    μ = rand(posterior_mu(m0[k], V0[k], draw.Σ[k], X))
 
-    Σ = Symmetric(rand(posterior_variance(ν0, S0, μ, X)))
-    μ = rand(posterior_mu(m0, V0, Σ, X))
+    # @info "Mu/Var" k μ Σ
 
     return (μ, Σ)
 end
@@ -127,32 +133,65 @@ function hmm_emit(states, mus, sigmas)
     return f
 end
 
-function gibbs_step(priors, data)
-    S = posterior_states(priors, data)
-    μ_H, Σ_H = mu_var_gibbs(priors, data[S .== 1, :])
-    μ_L, Σ_L = mu_var_gibbs(priors, data[S .== 2, :])
+function initialize(m0, V0, ν0, S0, pi, A, T)
+    μ = [rand(MvNormal(m0[i], V0[i])) for i in 1:length(m0)]
+    Σ = [Symmetric(
+            rand(InverseWishart(ν0[i], S0[i]))) for i in 1:length(ν0)]
+    S = hmm_states(A, T, pi)
+
+    return (μ=μ, Σ=Σ, S=S)
+end
+
+function gibbs_step(priors, data, draw)
+    @unpack m0, V0, ν0, S0, pi, A, T = priors
+    K = size(A, 1)
+
+    S = posterior_states(A, pi, draw.μ, draw.Σ, data)
+    res = map(k -> mu_var_gibbs(priors, data[S .== k, :], k, draw), 1:K)
+    μ = map(t -> t[1], res)
+    Σ = map(t -> t[2], res)
+
+    return (μ=μ, Σ=Σ, S=S)
 end
 
 # Deterministic parameters
-Random.seed!(5)
+# Random.seed!(5)
 mu =[
-    [1.5, 2.2],
+    [-3, 2.2],
     [2, 0.0],
-] ./ 5
+]
 sigma = [
     [1.0 0.25; 0.25 1.0],
     [1.0 -0.22; -0.22 1.0],
 ]
 
-pi = [0.95, 0.05]
+pi = [0.5, 0.5]
 A = [
-    0.90 0.10;
-    0.01 0.99
+    0.75 0.25;
+    0.5 0.5
 ]
 
 S = hmm_states(A, 10, pi)
-f = hmm_emit(S, mu, sigma)
+data = hmm_emit(S, mu, sigma)
 # state_post = posterior_states(A, pi, mu, sigma, f)
+
+# m0 = [
+#     [-2, 0.0],
+#     [1.0, 0.0]
+# ]
+m0 = mu
+
+V0 = [
+    Float64[1 0; 0 1],
+    Float64[1 0; 0 1]
+]
+
+ν0 = [15, 15]
+S0 = sigma
+# S0 = [
+#     [20 0; 0 20],
+#     [20 0; 0 20],
+# ]
 
 priors = (
     A=A, 
@@ -163,7 +202,32 @@ priors = (
     V0=V0, 
     ν0=ν0, 
     S0=S0,
+    T=length(S)
 )
+
+draws = [initialize(m0, V0, ν0, S0, pi, A, priors.T)]
+
+@showprogress for i in 2:100000
+    push!(draws, gibbs_step(priors, data, draws[i-1]))
+end
+
+μ1 = map(x -> x.μ[1], z)
+μ11 = map(x -> x[1], μ1)
+μ12 = map(x -> x[2], μ1)
+
+μ2 = map(x -> x.μ[2], z)
+μ21 = map(x -> x[1], μ2)
+μ22 = map(x -> x[2], μ2)
+
+plot(μ11)
+plot!(μ12)
+plot!(μ21)
+plot!(μ22)
+
+S_post = mapreduce(x -> x.S, hcat, draws)
+
+[S mean(S_post, dims=2)]
+
 # α, predicted, β, smoothed = filtering(f, A, mu, sigma, pi)
 
 # display(α)
