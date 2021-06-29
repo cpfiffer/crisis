@@ -8,6 +8,7 @@ using Random
 using StructArrays
 using ProgressMeter
 using StatsFuns
+using DataFrames
 
 function posterior_mu(m0, V0, Σ, X)
     μ = vec(mean(X; dims=1))
@@ -182,47 +183,49 @@ function gibbs_step(priors, data, draw; override=NamedTuple())
     return (μ=μ, Σ=Σ, S=S)
 end
 
-pi = [0.1, 0.9]
+pi = [0.5, 0.5]
 # pi = [0.5, 0.5]
 A = [
-    0.99 0.01;
-    0.01 0.99
+    0.95 0.05;
+    0.7 0.3
 ]
 n_states = size(A, 1)
 
-Random.seed!(1)
-S = hmm_states(A, 50, pi)
-# S = [1,1,1,2,1]
+Random.seed!(2)
+S = hmm_states(A, 20, pi)
+# S = [1,1,1,2,2]
 # state_post = posterior_states(A, pi, mu, sigma, f)
 
 # Stochastic parameters
-# n_assets = 3
-# iw = InverseWishart(n_assets + 2, diagm(ones(n_assets)))
-# mu = [randn(n_assets) .+ 1 for _ in 1:n_states]
-# sigma = [rand(iw) for _ in 1:n_states]
+n_assets = 50
+iw = InverseWishart(n_assets + 2, diagm(ones(n_assets)))
+mu = [randn(n_assets) .+ 1 for _ in 1:n_states]
+sigma = [rand(iw) for _ in 1:n_states]
 
 # Deterministic parameters
 # Random.seed!(5)
-mu =[
-    [30, 0.5],
-    [0.5, 0.25],
-]
-sigma = [
-    [1.0 0.25; 0.25 1.0],
-    [1.0 -0.25; -0.25 1.0],
-]
-n_assets = length(mu[1])
+# mu =[
+#     [2, -0.5],
+#     [-0.5, 0.25],
+# ]
+# sigma = [
+#     [1.0 0.25; 0.25 1.0],
+#     [2.0 -0.25; -0.25 2.0],
+# ]
+# n_assets = length(mu[1])
 
 data = hmm_emit(S, mu, sigma)
 
 
 m0 = [
-    [2, 1.0],
-    [1, 0.5]
+    mu[1],
+    mu[2]
 ]
 # m0 = map(I -> zeros(n_assets), 1:n_states)
 
-V0 = [I for _ in 1:n_states]
+V0 = [
+    0.0003I, 3I
+]
 # V0 = [
 #     Float64[1 0; 0 1],
 #     Float64[1 0; 0 1]
@@ -230,13 +233,13 @@ V0 = [I for _ in 1:n_states]
 
 ν0 = [n_states+n_assets+1 for _ in 1:n_states]
 # ν0 = [15, 15]
-S0 = [
-    [1.0 0.15; 0.15 1.0],
-    [1.0 -0.15; -0.15 1.0]
-]
 # S0 = [
-#     diagm(ones(n_assets)) for j in 1:n_states
+#     sigma[1],
+#     [1.0 -0.15; -0.15 1.0]
 # ]
+S0 = [
+    diagm(ones(n_assets)) for j in 1:n_states
+]
 
 priors = (
     A=A, 
@@ -259,18 +262,18 @@ end
 
 # draws = draws[100:end]
 
-μ1 = map(x -> x.μ[1], draws)
-μ11 = map(x -> x[1], μ1)
-μ12 = map(x -> x[2], μ1)
+# μ1 = map(x -> x.μ[1], draws)
+# μ11 = map(x -> x[1], μ1)
+# μ12 = map(x -> x[2], μ1)
 
-μ2 = map(x -> x.μ[2], draws)
-μ21 = map(x -> x[1], μ2)
-μ22 = map(x -> x[2], μ2)
+# μ2 = map(x -> x.μ[2], draws)
+# μ21 = map(x -> x[1], μ2)
+# μ22 = map(x -> x[2], μ2)
 
-estimated_mu = [
-    mean(μ11) mean(μ12);
-    mean(μ21) mean(μ22)
-]
+# estimated_mu = [
+#     mean(μ11) mean(μ12);
+#     mean(μ21) mean(μ22)
+# ]
 
 # p = plot(μ11)
 # plot!(p, μ12)
@@ -278,12 +281,49 @@ estimated_mu = [
 # plot!(p, μ22)
 # display(p)
 
-# S_post = mapreduce(x -> x.S, hcat, draws)
-S_post = mean(map(x -> x.S, draws))
-sts = [S S_post]
+function state_summary(S)
+    max_states = maximum(S)
+    T = size(S, 1)
+    N = size(S, 2)
+    summ = zeros(T, max_states)
+    for i in 1:T
+        s = S[i,:]
+        for k in 1:max_states
+            summ[i,k] = sum(s .== k) / N
+        end
+    end
 
-p2 = plot(sts[:,1], label="Ground truth")
-plot!(p2, sts[:,2], label="Posterior mean")
+    return summ
+end
+
+println("Estimated")
+display(estimated_mu)
+
+println("True")
+display(hcat(mu...))
+
+
+
+S_post = mapreduce(x -> x.S, hcat, draws)
+
+# [S state_summary(S_post)]
+# S_post = mean(map(x -> x.S, draws))
+
+sig_1 = mean(map(x -> x.Σ[1], draws))
+sig_2 = mean(map(x -> x.Σ[2], draws))
+
+summ = state_summary(S_post)
+sts = [S summ[:,1]]
+plot(sts) |> display
+
+df = DataFrame(
+    true_states = S,
+    state_1_post = summ[:,1],
+    state_2_post = summ[:,2],
+)
+
+# p2 = plot(sts[:,1], label="Ground truth")
+# plot!(p2, sts[:,2], label="Posterior mean")
 
 # plot(p, p2)
 
