@@ -46,7 +46,7 @@ function mu_var_gibbs(priors, X, k, draw)
 
     # @info "Mu/Var" k μ Σ
 
-    return (μ, Σ)
+    return (μ, Σ), ()
 end
 
 function emit_density(f, dist)
@@ -134,6 +134,17 @@ function posterior_states(A, pi, μs, Σs, X)
     return map(x -> rand(x), dists)
 end
 
+function predicted_states(s::Int, A)
+    K = size(A, 1)
+
+    P = zeros(K)
+    for k in 1:K
+        P[k] = A[s, k]
+    end
+
+    return P
+end
+
 # Simulate HMM states
 function hmm_states(A, T, pi)
     states = zeros(Int, T)
@@ -157,49 +168,87 @@ function hmm_emit(states, mus, sigmas)
     return f
 end
 
-function initialize(m0, V0, ν0, S0, pi, A, T)
+function initialize(priors; n_simulations=1_000)
+    @unpack m0, V0, ν0, S0, delta, gamma, w, pi, A, T = priors
     μ = [rand(MvNormal(m0[i], V0[i])) for i in 1:length(m0)]
     Σ = [Symmetric(
             rand(InverseWishart(ν0[i], S0[i]))) for i in 1:length(ν0)]
     S = hmm_states(A, T, pi)
 
-    return (μ=μ, Σ=Σ, S=S)
+    # Calculate future prices
+    P_state = predicted_states(S[end], A)
+    price = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
+
+    return (μ=μ, Σ=Σ, S=S, price=price)
 end
 
-function gibbs_step(priors, data, draw; override=NamedTuple())
-    @unpack m0, V0, ν0, S0, pi, A, T = priors
-    K = size(A, 1)
+function conditional_payoffs(mus, sigmas, N, probs)
+    dists = [MvNormal(mus[i], sigmas[i]) for i in 1:length(mus)]
+    s = rand(Categorical(probs), N)
+    draws = zeros(length(mus[1]), N)
 
-    S = if :S in keys(override)
-        override.S
-    else
-        posterior_states(A, pi, draw.μ, draw.Σ, data)
+    for i in 1:N
+        draws[:,i] = rand(dists[s[i]])
     end
 
+    return draws
+end
+
+function prices(delta, w, gamma, mus, sigmas, N, probs)
+    draws = conditional_payoffs(mus, sigmas, N, probs)
+    m = w'exp.(draws) .^ (-gamma)
+    return vec(delta .* mean(m .* draws, dims=2))
+end
+
+function gibbs_step(
+    priors, 
+    data, 
+    draw; 
+    override=NamedTuple(), 
+    n_simulations=10_000
+)
+    @unpack delta, w, gamma, pi, A, T = priors
+    K = size(A, 1)
+
+    S = posterior_states(A, pi, draw.μ, draw.Σ, data)
     res = map(k -> mu_var_gibbs(priors, data[S .== k, :], k, draw), 1:K)
     μ = map(t -> t[1], res)
     Σ = map(t -> t[2], res)
 
-    return (μ=μ, Σ=Σ, S=S)
+    # Calculate future prices
+    P_state = predicted_states(S[end], A)
+    price = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
+
+    return (μ=μ, Σ=Σ, S=S, price=price)
+end
+
+function add_riskfree(mu, sigma)
+    mu_new = vcat(1.0, mu)
+    M = size(sigma, 1)
+    sigma_new = zeros(M+1, M+1)
+    sigma_new[2:end, 2:end] = sigma
+    sigma_new[1,1] = 0.000001
+
+    return mu_new, sigma_new
 end
 
 pi = [0.5, 0.5]
 # pi = [0.5, 0.5]
 A = [
-    0.95 0.05;
+    0.6 0.4;
     0.7 0.3
 ]
 n_states = size(A, 1)
 
 Random.seed!(2)
-S = hmm_states(A, 20, pi)
+S = hmm_states(A, 5, pi)
 # S = [1,1,1,2,2]
 # state_post = posterior_states(A, pi, mu, sigma, f)
 
 # Stochastic parameters
-n_assets = 50
+n_assets = 3
 iw = InverseWishart(n_assets + 2, diagm(ones(n_assets)))
-mu = [randn(n_assets) .+ 1 for _ in 1:n_states]
+mu = [randn(n_assets) .+ 15 for _ in 1:n_states]
 sigma = [rand(iw) for _ in 1:n_states]
 
 # Deterministic parameters
@@ -214,6 +263,11 @@ sigma = [rand(iw) for _ in 1:n_states]
 # ]
 # n_assets = length(mu[1])
 
+for i in 1:n_states
+    mu[i], sigma[i] = add_riskfree(mu[i], sigma[i])
+end
+n_assets += 1
+
 data = hmm_emit(S, mu, sigma)
 
 
@@ -224,7 +278,7 @@ m0 = [
 # m0 = map(I -> zeros(n_assets), 1:n_states)
 
 V0 = [
-    0.0003I, 3I
+    0.3I, 3I
 ]
 # V0 = [
 #     Float64[1 0; 0 1],
@@ -250,10 +304,13 @@ priors = (
     V0=[1I, 1I], 
     ν0=ν0, 
     S0=S0,
-    T=length(S)
+    T=length(S),
+    delta=0.95,
+    w=[1/n_assets for i in 1:n_assets],
+    gamma=2.0
 )
 
-draws = [initialize(m0, V0, ν0, S0, pi, A, priors.T)]
+draws = [initialize(priors)]
 
 or = override=(S=S,)
 @showprogress for i in 2:2000
@@ -274,6 +331,12 @@ end
 #     mean(μ11) mean(μ12);
 #     mean(μ21) mean(μ22)
 # ]
+
+# println("Estimated")
+# display(estimated_mu)
+
+# println("True")
+# display(hcat(mu...))
 
 # p = plot(μ11)
 # plot!(p, μ12)
@@ -296,11 +359,7 @@ function state_summary(S)
     return summ
 end
 
-println("Estimated")
-display(estimated_mu)
 
-println("True")
-display(hcat(mu...))
 
 
 
@@ -314,13 +373,15 @@ sig_2 = mean(map(x -> x.Σ[2], draws))
 
 summ = state_summary(S_post)
 sts = [S summ[:,1]]
-plot(sts) |> display
+# plot(sts) |> display
 
 df = DataFrame(
     true_states = S,
     state_1_post = summ[:,1],
     state_2_post = summ[:,2],
 )
+
+P = mapreduce(x -> x.price', vcat, draws)
 
 # p2 = plot(sts[:,1], label="Ground truth")
 # plot!(p2, sts[:,2], label="Posterior mean")
