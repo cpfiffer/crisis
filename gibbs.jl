@@ -9,12 +9,13 @@ using StructArrays
 using ProgressMeter
 using StatsFuns
 using DataFrames
+# using Optim
+using JuMP
 
 function rescale_lp(lp)
     weights = exp.(lp .- maximum(lp))
     return weights ./ sum(weights)
 end
-
 
 function posterior_mu(m0, V0, Σ, X)
     μ = vec(mean(X; dims=1))
@@ -25,6 +26,7 @@ function posterior_mu(m0, V0, Σ, X)
         Σ_inv = inv(Σ)
         VN = Symmetric(inv(V0_inv + N .* Σ_inv))
         mN = VN * (Σ_inv * (N .* μ)  + V0_inv * m0)
+
         return MvNormal(mN, VN)
     else
         return MvNormal(m0, V0)
@@ -48,16 +50,18 @@ function mu_var_gibbs(priors, X, k, draw)
     @unpack m0, V0, ν0, S0 = priors
 
     m = [draw.μ1, draw.μ2]
-    s = [draw.Σ1, draw.Σ2]
+    # s = [draw.Σ1, draw.Σ2]
 
     sigma_post = posterior_variance(ν0[k], S0[k], m[k], X)
-    mu_post = posterior_mu(m0[k], V0[k], s[k], X)
-
     Σ = Symmetric(rand(sigma_post))
+
+    mu_post = posterior_mu(m0[k], V0[k], Σ, X)
     μ = rand(mu_post)
 
     Σ_like = logpdf(sigma_post, Σ)
     μ_like = logpdf(mu_post, μ)
+
+    # @info "" μ mu_post k  m
 
     # @info "Mu/Var" k μ Σ
 
@@ -65,7 +69,7 @@ function mu_var_gibbs(priors, X, k, draw)
 end
 
 function emit_density(f, dist)
-    return logpdf(dist, f)
+    return loglikelihood(dist, f)
 end
 
 function filtering(f, A, mus, sigmas, pi)
@@ -201,20 +205,64 @@ function conditional_payoffs(mus, sigmas, N, probs)
         densities[i] += logpdf(dists[s[i]], draws[:,i])
     end
 
-    return draws, densities
+    return draws, rescale_lp(densities)
+end
+
+function port_payoff(w, draws, densities)
+    payoffs = (w'draws)
+    expectation = payoffs*densities
+
+    variance = sum(w .* (payoffs .- expectation).^2)
+    # expectation = (w'draws)
+    # variance = ((w'draws) - expectation)^2 * densities
+    return expectation, variance
+end
+
+function utility(w, gamma, draws, densities)
+    m, s = port_payoff(w, draws, densities)
+
+    return m - (gamma^2 / 2) * s
+end
+
+function optimal_weights(gamma, draws, densities)
+    N = size(draws, 1)
+    init_w = [1/N for i in 1:N]
+    target(w...) = utility(collect(w), gamma, draws, densities)
+    # target(w...) = sum(collect(w) .^ 2)
+
+    model = Model(Ipopt.Optimizer)
+    register(model, :target, N, target; autodiff = true)
+    set_silent(model)
+    @variable(model, w[1:N] >= -1)
+    @NLobjective(model, Max, target(w...))
+    @NLconstraint(model, sum(w[i] for i in 1:N) == 1)
+    optimize!(model)
+    
+    return value.(w)
 end
 
 function prices(delta, w, gamma, mus, sigmas, N, probs)
     draws, densities = conditional_payoffs(mus, sigmas, N, probs)
-    m = w'exp.(draws) .^ (-gamma)
-    P = vec(delta .* sum(densities .* (m .* draws), dims=2))
-    R = sum(densities .* (draws ./ P), dims=2)
 
-    @info "" P R
-    return P, R
+    # res = optimal_weights(gamma, draws, densities)
+    # display(res)
+    # display(res.minimizer)
+    # error()
+
+    m = w'exp.(draws) .^ (-gamma)
+
+    P = vec(delta .* (densities' * (m .* draws)'))
+
+    # Rs = (draws ./ P)
+    optimal_w = w
+    # optimal_w = optimal_weights(gamma, Rs, densities)
+    
+    R = vec((densities' * (draws ./ P)')) .- 1
+
+    return P, R, optimal_w
 end
 
-function initialize(priors; n_simulations=1_000)
+function initialize(priors; n_simulations=10_000)
     @unpack m0, V0, ν0, S0, delta, gamma, w, pi, A, T = priors
     K = length(m0)
 
@@ -232,7 +280,7 @@ function initialize(priors; n_simulations=1_000)
 
     # Calculate future prices
     P_state = predicted_states(S[end], A)
-    price, returns = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
+    price, returns, optimal_w = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
 
     return (
         μ1=μ[1], μ2=μ[2], 
@@ -240,6 +288,7 @@ function initialize(priors; n_simulations=1_000)
         S=S, 
         price=price, 
         returns=returns,
+        w=optimal_w,
         lp=ℓ
     )
 end
@@ -249,9 +298,9 @@ function gibbs_step(
     data, 
     draw; 
     override=NamedTuple(), 
-    n_simulations=1_000
+    n_simulations=10_000
 )
-    @unpack delta, w, gamma, pi, A, T = priors
+    @unpack delta, w, gamma, pi, A = priors
     K = size(A, 1)
 
     S, state_like = posterior_states(
@@ -270,7 +319,7 @@ function gibbs_step(
 
     # Calculate future prices
     P_state = predicted_states(S[end], A)
-    price, returns = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
+    price, returns, optimal_w = prices(delta, w, gamma, μ, Σ, n_simulations, P_state)
 
     return (
         μ1=μ[1], μ2=μ[2], 
@@ -278,6 +327,7 @@ function gibbs_step(
         S=S, 
         price=price, 
         returns=returns,
+        w=optimal_w,
         lp=lp
     )
 end
@@ -287,9 +337,23 @@ function add_riskfree(mu, sigma)
     M = size(sigma, 1)
     sigma_new = zeros(M+1, M+1)
     sigma_new[2:end, 2:end] = sigma
-    sigma_new[1,1] = 0.00000001
+    sigma_new[1,1] = 0.000000001
 
     return mu_new, sigma_new
+end
+
+function state_summary(S, max_states)
+    T = size(S, 1)
+    N = size(S, 2)
+    summ = zeros(T, max_states)
+    for i in 1:T
+        s = S[i,:]
+        for k in 1:max_states
+            summ[i,k] = sum(s .== k) / N
+        end
+    end
+
+    return summ
 end
 
 function expectation(values, lp)
@@ -301,31 +365,33 @@ end
 pi = [0.5, 0.5]
 # pi = [0.5, 0.5]
 A = [
-    0.6 0.4;
-    0.7 0.3
+    0.7 0.3;
+    0.2 0.8
 ]
 n_states = size(A, 1)
 
 Random.seed!(2)
-S_true, _ = hmm_states(A, 5, pi)
+S_true, _ = hmm_states(A, 50, pi)
 # S = [1,1,1,2,2]
 # state_post = posterior_states(A, pi, mu, sigma, f)
 
 # Stochastic parameters
-n_assets = 1
-iw = InverseWishart(n_assets + 2, diagm(ones(n_assets)))
-mu = [randn(n_assets) .+ 1.015 for _ in 1:n_states]
+n_assets = 5
+iw = InverseWishart(n_assets + 30, diagm(ones(n_assets)))
+mu = [randn(n_assets) / 2 for _ in 1:n_states]
+mu[1] = mu[1] .+ 1.01
+mu[2] = mu[2] .+ 1
 sigma = [rand(iw) for _ in 1:n_states]
 
 # Deterministic parameters
 # Random.seed!(5)
 # mu =[
-#     [2, -0.5],
-#     [-0.5, 0.25],
+#     [1.5, 1.5],
+#     [1.25, 1.25],
 # ]
 # sigma = [
 #     [1.0 0.25; 0.25 1.0],
-#     [2.0 -0.25; -0.25 2.0],
+#     [2.0 -0.25; -0.25 1.0],
 # ]
 # n_assets = length(mu[1])
 
@@ -344,8 +410,11 @@ m0 = [
 # m0 = map(I -> zeros(n_assets), 1:n_states)
 
 V0 = [
-    0.0003I, 3I
+    3 .* diagm(ones(n_assets)), 
+    3 .* diagm(ones(n_assets))
 ]
+V0[1][1,1] = 0.000001
+V0[2][1,1] = 0.000001
 # V0 = [
 #     Float64[1 0; 0 1],
 #     Float64[1 0; 0 1]
@@ -355,53 +424,80 @@ V0 = [
 # ν0 = [15, 15]
 # S0 = [
 #     sigma[1],
-#     [1.0 -0.15; -0.15 1.0]
+#     sigma[2]
 # ]
 S0 = [
     diagm(ones(n_assets)) for j in 1:n_states
 ]
-S0[1,1] /= 1000
+S0[1][1,1] /= 100000
+S0[2][1,1] /= 100000
 
-priors = (
-    A=A, 
-    pi=pi, 
-    μs=mu, 
-    Σs=sigma, 
-    m0=m0,
-    V0=[1I, 1I], 
-    ν0=ν0, 
-    S0=S0,
-    T=length(S_true),
-    delta=0.95,
-    w=[1/n_assets for i in 1:n_assets],
-    gamma=2.0
-)
+dfs = []
+for t in 1:length(S_true)
+    priors = (
+        A=A, 
+        pi=pi, 
+        μs=mu, 
+        Σs=sigma, 
+        m0=m0,
+        V0=V0, 
+        ν0=ν0, 
+        S0=S0,
+        T=t,
+        delta=0.95,
+        w=[1/n_assets for i in 1:n_assets],
+        gamma=1
+    )
 
-draws = [initialize(priors)]
+    draws = [initialize(priors)]
 
-# for i in 2:200
-@showprogress for i in 2:2000
-    push!(draws, gibbs_step(priors, data, draws[i-1]))
+    # for i in 2:20
+    @showprogress for i in 2:2000
+        push!(draws, gibbs_step(priors, data[1:t,:], draws[i-1]))
+    end
+
+    S = mapreduce(x -> x.S', vcat, draws)
+    μ1 = map(x -> x.μ1, draws)
+    μ2 = map(x -> x.μ2, draws)
+    Σ1 = map(x -> x.Σ1, draws)
+    Σ2 = map(x -> x.Σ2, draws)
+    lp = map(x -> x.lp, draws)
+    P = mapreduce(x -> x.price', vcat, draws)
+    R = mapreduce(x -> x.returns', vcat, draws)
+    w = mapreduce(x -> x.w', vcat, draws)
+    # density(lp)
+
+    lp_scaled = exp.(lp .- maximum(lp))
+    lp_scaled = lp_scaled ./ sum(lp_scaled)
+
+    eq_prices = map(i -> expectation(P[:,i], lp), 1:n_assets)
+    eq_returns = map(i -> expectation(R[:,i], lp), 1:n_assets)
+    risk_premium = eq_returns .- eq_returns[1]
+
+    pstates = state_summary(S, size(A, 1))
+
+    df = DataFrame(
+        price = eq_prices,
+        returns = eq_returns,
+        premia = risk_premium,
+        payoff_1 = mu[1],
+        payoff_2 = mu[2],
+        p_state_1 = pstates[end,1],
+        p_state_2 = pstates[end,2],
+        asset_id = 1:n_assets,
+        t = t
+    )
+
+    push!(dfs, df)
 end
 
+results = vcat(dfs...)
+risk_free = results[results.asset_id .== 2, :]
 
+p1 = @df results plot(:t, :price, group=:asset_id)
 
-S = mapreduce(x -> x.S', vcat, draws)
-μ1 = map(x -> x.μ1, draws)
-μ2 = map(x -> x.μ2, draws)
-Σ1 = map(x -> x.Σ1, draws)
-Σ2 = map(x -> x.Σ2, draws)
-lp = map(x -> x.lp, draws)
-P = mapreduce(x -> x.price', vcat, draws)
-R = mapreduce(x -> x.returns', vcat, draws)
-density(lp)
-
-lp_scaled = exp.(lp .- maximum(lp))
-lp_scaled = lp_scaled ./ sum(lp_scaled)
-
-eq_prices = map(i -> expectation(P[:,i], lp), 1:n_assets)
-eq_returns = map(i -> expectation(R[:,i], lp), 1:n_assets)
-
+!isdir("plots") && mkpath("plots")
+savefig(p1, "plots/prices.png")
 # draws = draws[100:end]
 
 # μ1 = map(x -> x.μ[1], draws)
@@ -429,20 +525,7 @@ eq_returns = map(i -> expectation(R[:,i], lp), 1:n_assets)
 # plot!(p, μ22)
 # display(p)
 
-# function state_summary(S)
-#     max_states = maximum(S)
-#     T = size(S, 1)
-#     N = size(S, 2)
-#     summ = zeros(T, max_states)
-#     for i in 1:T
-#         s = S[i,:]
-#         for k in 1:max_states
-#             summ[i,k] = sum(s .== k) / N
-#         end
-#     end
 
-#     return summ
-# end
 
 
 
