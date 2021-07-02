@@ -69,7 +69,58 @@ function mu_var_gibbs(priors, X, k, draw)
 end
 
 function emit_density(f, dist)
-    return loglikelihood(dist, f)
+    # return loglikelihood(dist, f)
+    return logpdf(dist, f)
+end
+
+function filtering_nonlog(f, A, mus, sigmas, pi)
+    K = size(A, 1)
+    T = size(f, 1)
+    dists = [MvNormal(mus[i], sigmas[i]) for i in 1:K]
+
+    α = zeros(K,T)
+    predicted = zeros(K, T)
+    β = zeros(K, T)
+    smoothed = zeros(K,T)
+    
+    α[1,1] = pi[1] * loglikelihood(dists[1], f[1,:])
+    α[2,1] = pi[2] * loglikelihood(dists[2], f[1,:])
+    α[:,1] = α[:,1] .- logsumexp(α[:,1])
+    
+    for t in 2:T
+        corrector = [
+            loglikelihood(dists[1], f[t,:]),
+            loglikelihood(dists[2], f[t,:])
+        ]
+
+        predictor = [
+            logsumexp(log(A[1,1]) + α[1,t-1], log(A[2,1]) + α[2,t-1]),
+            logsumexp(log(A[1,2]) + α[1,t-1], log(A[2,2]) + α[2,t-1]),
+        ]
+
+        α[:,t] = corrector + predictor
+        α[:,t] = α[:,t] .- logsumexp(α[:,t])
+    end
+
+    for t in T-1:-1:1
+        β[1, t] = logsumexp(
+            loglikelihood(dists[1], f[t+1,:]) + log(A[1,1]) + β[1,t+1],
+            loglikelihood(dists[2], f[t+1,:]) + log(A[1,2]) + β[2,t+1],
+        )
+
+        β[2, t] = logsumexp(
+            loglikelihood(dists[1], f[t+1,:]) + log(A[2,1]) + β[1,t+1],
+            loglikelihood(dists[2], f[t+1,:]) + log(A[2,2]) + β[2,t+1],
+        )
+
+        β[:,t] = β[:,t] .- logsumexp(β[:,t])
+
+    end
+
+    ab = α + β
+    smoothed = ab .- map(i -> logsumexp(ab[:,i]), 1:T)'
+
+    return exp.(α), exp.(predicted), exp.(β), exp.(smoothed)
 end
 
 function filtering(f, A, mus, sigmas, pi)
@@ -83,9 +134,17 @@ function filtering(f, A, mus, sigmas, pi)
     # Preallocate likelihoods
     α = zeros(K, T)
     predicted = zeros(K, T)
-    α[:,1] = log.(pi) .+ map(i -> emit_density(f[1,:], dists[i]), 1:K)
-    # α[:,1] = α[:,1] ./ sum(α[:,1])
+
+    init_emit = map(i -> emit_density(f[1,:], dists[i]), 1:K)
+    α[:,1] = log.(pi) + init_emit
     α[:,1] = α[:,1] .- logsumexp(α[:,1])
+
+    # α[:,1] = α[:,1] .- logsumexp(α[:,1])
+    
+    # Using non-logs
+    # α[:,1] = pi .* map(i -> emit_density(f[1,:], dists[i]), 1:K)
+    # display(α)
+    # α[:,1] = α[:,1] ./ sum(α[:,1])
 
     # Preallocate smoothing
     β = zeros(K, T)
@@ -95,64 +154,71 @@ function filtering(f, A, mus, sigmas, pi)
         predicted[1,1] += log(A[k,1]) + α[k, 1]
         predicted[2,1] += log(A[k,2]) + α[k, 1]
     end
+    predicted[:,1] = predicted[:,1] .- logsumexp(predicted[:,1])
 
     for t in 2:T
         α[1,t] = emit_density(f[t,:], dists[1])
         α[2,t] = emit_density(f[t,:], dists[2])
 
+        # Log
         for k in 1:K
-            α[1,t] += log(A[k,1]) + α[k, t-1]
-            α[2,t] += log(A[k,2]) + α[k, t-1]
+            α[1,t] += logsumexp(log(A[k,1]) + α[k, t-1])
+            α[2,t] += logsumexp(log(A[k,2]) + α[k, t-1])
         end
 
-        α[:,t] = α[:,t] .- logsumexp(α[:,t])
+        # Non-log
+        # for k in 1:K
+        #     α[1,t] *= A[k,1] * α[k, t-1]
+        #     α[2,t] *= A[k,2] * α[k, t-1]
+        # end
+
+        # α[:,t] = α[:,t] .- logsumexp(α[:,t])
         # α[:,t] = α[:,t] ./ sum(α[:,t])
+        α[:,t] = α[:,t] .- logsumexp(α[:,t])
 
         for k in 1:K
             predicted[1,t] += log(A[k,1]) + α[k, t]
             predicted[2,t] += log(A[k,2]) + α[k, t]
         end
+
+        predicted[:,t] = predicted[:,t] .- logsumexp(predicted[:,t])
     end
 
     for t in T-1:-1:1
         for k in 1:K
-            β[k,t] += exp(α[k,t+1] + predicted[k, t] + β[k, t+1])
+            # β[k,t] += exp(α[k,t+1] + predicted[k, t]) + β[k, t+1]
+            a = emit_density(f[t+1,:], dists[k])
+            b = predicted[k, t+1]
+            c = β[k, t+1]
+            β[k,t] += logsumexp(a + b + c)
         end
 
         # β[:,t] = β[:,t] ./ sum(β[:,t])
-        β[:,t] = β[:,t] .- logsumexp(β[:,t])
+        # β[:,t] = β[:,t] .- logsumexp(β[:,t])
     end
 
-    # display(maximum(α, dims=1))
-    # α = exp.(α .- maximum(α, dims=1))
-    # α = exp.(α .- maximum(α, dims=1))
-
-    # display(β)
     ab = α .+ β
     smoothed = ab .- logsumexp(ab, dims=1)
-    # display(plot(smoothed[1,:]))
-    # display(smoothed)
-    # display(α)
-    # display(β)
-    # display(smoothed)
-    # error()
 
-    return α, predicted, β, exp.(smoothed)
+    return exp.(α), exp.(predicted), exp.(β), exp.(smoothed)
 end
 
 function posterior_states(A, pi, μs, Σs, X)
-    α, predicted, β, smoothed = filtering(X, A, μs, Σs, pi)
+    α, predicted, β, smoothed = filtering_nonlog(X, A, μs, Σs, pi)
 
-    # println("========================")
-    # display(α)
-    # display(β)
-    # foreach(display, μs)
-    # foreach(display, Σs)
-    # display(smoothed)
     dists = vec(mapslices(z -> Categorical(z), smoothed, dims=[1]))
     S = map(x -> rand(x), dists)
     state_like = sum(map(i -> logpdf(dists[i], S[i]), 1:length(S)))
-    return S, state_like
+    return (
+        S, 
+        state_like, 
+        (
+            predicted=predicted, 
+            smoothed=smoothed, 
+            α=α,
+            β=β
+        )
+    )
 end
 
 function predicted_states(s::Int, A)
@@ -303,7 +369,7 @@ function gibbs_step(
     @unpack delta, w, gamma, pi, A = priors
     K = size(A, 1)
 
-    S, state_like = posterior_states(
+    S, state_like, state_info = posterior_states(
         A, 
         pi, 
         [draw.μ1, draw.μ2], 
@@ -328,7 +394,8 @@ function gibbs_step(
         price=price, 
         returns=returns,
         w=optimal_w,
-        lp=lp
+        lp=lp,
+        state_info = state_info
     )
 end
 
@@ -362,25 +429,25 @@ function expectation(values, lp)
     return sum(values .* weights)
 end
 
-pi = [0.5, 0.5]
+pi = [0.99, 0.01]
 # pi = [0.5, 0.5]
 A = [
-    0.7 0.3;
-    0.2 0.8
+    0.99 0.01;
+    0.40 0.60
 ]
 n_states = size(A, 1)
 
 Random.seed!(2)
-S_true, _ = hmm_states(A, 50, pi)
-# S = [1,1,1,2,2]
+# S_true, _ = hmm_states(A, 500, pi)
+S_true = vcat(repeat([1], 10), repeat([2], 10))
 # state_post = posterior_states(A, pi, mu, sigma, f)
 
 # Stochastic parameters
-n_assets = 5
-iw = InverseWishart(n_assets + 30, diagm(ones(n_assets)))
-mu = [randn(n_assets) / 2 for _ in 1:n_states]
-mu[1] = mu[1] .+ 1.01
-mu[2] = mu[2] .+ 1
+n_assets = 1
+iw = InverseWishart(n_assets + 10, diagm(ones(n_assets)))
+mu = [randn(n_assets) for _ in 1:n_states]
+mu[1] = mu[1] .+ 6
+mu[2] = mu[2] .+ 3
 sigma = [rand(iw) for _ in 1:n_states]
 
 # Deterministic parameters
@@ -410,11 +477,11 @@ m0 = [
 # m0 = map(I -> zeros(n_assets), 1:n_states)
 
 V0 = [
-    3 .* diagm(ones(n_assets)), 
-    3 .* diagm(ones(n_assets))
+    0.05 .* diagm(ones(n_assets)), 
+    0.05 .* diagm(ones(n_assets))
 ]
-V0[1][1,1] = 0.000001
-V0[2][1,1] = 0.000001
+# V0[1][1,1] = 0.000001
+# V0[2][1,1] = 0.000001
 # V0 = [
 #     Float64[1 0; 0 1],
 #     Float64[1 0; 0 1]
@@ -433,6 +500,9 @@ S0[1][1,1] /= 100000
 S0[2][1,1] /= 100000
 
 dfs = []
+state_dfs = []
+# t = length(S_true)
+
 for t in 1:length(S_true)
     priors = (
         A=A, 
@@ -444,17 +514,21 @@ for t in 1:length(S_true)
         ν0=ν0, 
         S0=S0,
         T=t,
-        delta=0.95,
+        delta=1.0,
         w=[1/n_assets for i in 1:n_assets],
         gamma=1
     )
 
-    draws = [initialize(priors)]
+    draws = []
 
-    # for i in 2:20
-    @showprogress for i in 2:2000
+    d1 = initialize(priors)
+    push!(draws, d1)
+
+    # for i in 2:200
+    @showprogress for i in 2:10_000
         push!(draws, gibbs_step(priors, data[1:t,:], draws[i-1]))
     end
+    draws = draws[2:end]
 
     S = mapreduce(x -> x.S', vcat, draws)
     μ1 = map(x -> x.μ1, draws)
@@ -465,6 +539,28 @@ for t in 1:length(S_true)
     P = mapreduce(x -> x.price', vcat, draws)
     R = mapreduce(x -> x.returns', vcat, draws)
     w = mapreduce(x -> x.w', vcat, draws)
+    # smoothed = map(x -> x.state_info.smoothed, draws)
+    # α = map(x -> x.state_info.α, draws)
+    # β = map(x -> x.state_info.β, draws)
+    # predicted = map(x -> x.state_info.predicted, draws)
+
+    # muplot = plot(map(x -> x[1], μ1))
+    # plot!(muplot, map(x -> x[2], μ1))
+    # plot!(muplot, map(x -> x[1], μ2))
+    # plot!(muplot, map(x -> x[2], μ2))
+    # display(muplot)
+
+    # plot(map(x -> x[1], μ1)) |> display
+    # plot(S[1,:]) |> display
+
+    # println("\nSmoothed")
+    # display(smoothed)
+    # println("\nPredicted")
+    # display(predicted)
+    # println("\nα")
+    # display(α)
+    # println("\nβ")
+    # display(β)
     # density(lp)
 
     lp_scaled = exp.(lp .- maximum(lp))
@@ -474,7 +570,7 @@ for t in 1:length(S_true)
     eq_returns = map(i -> expectation(R[:,i], lp), 1:n_assets)
     risk_premium = eq_returns .- eq_returns[1]
 
-    pstates = state_summary(S, size(A, 1))
+    pstates = state_summary(S', size(A, 1))
 
     df = DataFrame(
         price = eq_prices,
@@ -488,112 +584,25 @@ for t in 1:length(S_true)
         t = t
     )
 
+    m = vec(priors.w'exp.(data[1:t, :]') .^ (-priors.gamma))
+    sdf = DataFrame(
+        consumption = vec(priors.w'data[1:t, :]'),
+        sdf = m,
+        stateprob_1 = pstates[:,1],
+        stateprob_2 = pstates[:,2],
+        t = 1:t,
+        iter = t,
+    )
+
     push!(dfs, df)
+    push!(state_dfs, sdf)
 end
 
 results = vcat(dfs...)
-risk_free = results[results.asset_id .== 2, :]
+sdf_results = vcat(state_dfs...)
+# risk_free = results[results.asset_id .== 2, :]
 
 p1 = @df results plot(:t, :price, group=:asset_id)
 
 !isdir("plots") && mkpath("plots")
 savefig(p1, "plots/prices.png")
-# draws = draws[100:end]
-
-# μ1 = map(x -> x.μ[1], draws)
-# μ11 = map(x -> x[1], μ1)
-# μ12 = map(x -> x[2], μ1)
-
-# μ2 = map(x -> x.μ[2], draws)
-# μ21 = map(x -> x[1], μ2)
-# μ22 = map(x -> x[2], μ2)
-
-# estimated_mu = [
-#     mean(μ11) mean(μ12);
-#     mean(μ21) mean(μ22)
-# ]
-
-# println("Estimated")
-# display(estimated_mu)
-
-# println("True")
-# display(hcat(mu...))
-
-# p = plot(μ11)
-# plot!(p, μ12)
-# plot!(p, μ21)
-# plot!(p, μ22)
-# display(p)
-
-
-
-
-
-
-
-# S_post = mapreduce(x -> x.S, hcat, draws)
-
-# [S state_summary(S_post)]
-# S_post = mean(map(x -> x.S, draws))
-
-# sig_1 = mean(map(x -> x.Σ[1], draws))
-# sig_2 = mean(map(x -> x.Σ[2], draws))
-
-# summ = state_summary(S_post)
-# sts = [S summ[:,1]]
-# plot(sts) |> display
-
-# df = DataFrame(
-#     true_states = S,
-#     state_1_post = summ[:,1],
-#     state_2_post = summ[:,2],
-# )
-
-# P = mapreduce(x -> x.price', vcat, draws)
-
-# p2 = plot(sts[:,1], label="Ground truth")
-# plot!(p2, sts[:,2], label="Posterior mean")
-
-# plot(p, p2)
-
-# α, predicted, β, smoothed = filtering(f, A, mu, sigma, pi)
-
-# display(α)
-# display(predicted)
-# display(β)
-# display(smoothed)
-# display(S')
-
-# Test posterior mean code
-# S_true =  Symmetric([2.0 0.0; 0.0 1.0])
-# S_prior = [10.0 0.0; 0.0 10.0]
-# mu_true = [1.5, -1.5]
-# mu_prior = [0.0, 0.0]
-
-# n = 1000
-# data = rand(MvNormal(mu_true, S_true), n)'
-
-# mu_post_dist = posterior_mu(mean(data, dims=1) |> vec, S_prior, S_true, data)
-
-# # Test posterior variance code
-# ν0 = 2
-# var_post_dist = posterior_variance(ν0, cov(data), mu_true, data)
-
-# # Report variances
-# @info "Posteriors" mean(mu_post_dist) mean(var_post_dist)
-
-# function sampling_func(draw=nothing)
-#     return mu_var_gibbs(mu_prior, S_prior, ν0, S_prior, data; draw=draw)
-# end
-
-# transitions = [sampling_func()]
-
-# for i in 2:10000
-#     push!(transitions, sampling_func(transitions[i-1]))
-# end
-
-# μ1 = map(t -> t.μ[1], transitions)
-# μ2 = map(t -> t.μ[2], transitions)
-
-# plot(μ1)
-# plot!(μ2)q
