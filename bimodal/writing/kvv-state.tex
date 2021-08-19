@@ -1,0 +1,161 @@
+\documentclass{article}
+
+\title{Information choice and state uncertainty}
+\author{Cameron Pfiffer}
+
+\usepackage{palatino}
+\usepackage{amsmath}
+\usepackage{todonotes}
+\usepackage{optidef}
+\usepackage{color,soul}
+\usepackage{physics}
+% \setlength{\parindent}{0pt}
+
+\hfuzz=20pt 
+
+\if@todonotes@disabled
+    \newcommand{\hlfix}[2]{#1}
+    \else
+    \newcommand{\hlfix}[2]{\texthl{#1}\todo{#2}}
+\fi
+
+\usepackage[style=apa, 
+backend=biber, 
+giveninits=true,
+uniquelist=false, 
+uniquename=init,
+isbn=false, 
+maxcitenames=2,
+dashed=false, 
+maxbibnames=999,
+doi=false,
+url=false]{biblatex}
+\addbibresource{bibs/library.bib}
+
+\begin{document}
+
+\newcommand{\Gauss}{\mathcal{N}}
+
+Stochastic variables:
+
+\begin{itemize}
+    \item State variable $s ~ \sim \text{Bernoulli}(\pi)$. $P(s=H) = \pi$, $P(s=L) = 1-\pi$.
+    \item Risk factor payoffs $\tilde f \mid s \sim N(\Gamma^{-1} \mu_s, \Sigma_s)$
+    \item Risk factor supply $x \sim N(\overline{x}, \sigma_x I)$
+    \item Private signals $\eta_j \mid s \sim N(z, \Sigma_{\eta_j})$
+    \item Price signal $\eta_p \mid s \sim N(z, \Sigma_p)$
+\end{itemize}
+
+Joint density:
+
+$$
+P(s, \tilde f, x, \eta_j, \eta_p) = P(\tilde f \mid s) P(\eta_j \mid s) P(\eta_p \mid s) P(s)  P(x)
+$$
+
+Posterior density:
+
+$$
+P(s, \tilde f \mid x, \eta_j, \eta_p) = 
+    \frac{
+        P(x, \eta_j, \eta_p \mid s, \tilde f) P(s, \tilde f)
+    }{
+        P(x, \eta_j, \eta_p)
+    }
+$$
+
+Unknown values:
+
+\begin{itemize}
+    \item $E_j[\tilde f - \tilde p r \mid H]$
+    \item $E_j[\tilde f - \tilde p r \mid L]$
+    \item $V_j[\tilde f - \tilde p r \mid H]$
+    \item $V_j[\tilde f - \tilde p r \mid L]$
+    \item $P(H \mid \eta_p, \eta_j)$
+    \item $P(L \mid \eta_p, \eta_j)$
+    \item $E_j[\tilde f \mid \eta_p, \eta_j]$
+    \item $V_j[\tilde f \mid \eta_p, \eta_j]$
+    \item $\tilde p$
+\end{itemize}
+
+Portfolio choice problem:
+
+\begin{align*}
+    U_{2j} &= \max_{\tilde q_j}
+        \rho E_j [W_j] - \frac{\rho^2}{2} V_j [W_j] \\
+\end{align*}
+
+Optimal quantity:
+
+\begin{align*}
+    \tilde q_j &= \frac1\rho \bigg( P(H) \Sigma_H + P(L) \Sigma_L \bigg)^{-1} \bigg(
+        P(H) E_j [\tilde f \mid H] + P(L) E_j [\tilde f \mid L] - \tilde p r
+    \bigg) \\
+    &= \frac1\rho V_j[\tilde f]^{-1} (E_j [\tilde f] - \tilde p r)
+\end{align*}
+
+Ex-ante expected utility:
+
+\begin{align*}
+    U_{1j} &= E\biggl[
+        \rho E_j [W_j] - \frac{\rho^2}{2} V_j [W_j]
+    \biggr] \\
+    &= 
+        \pi E\biggl[
+            \rho E_j [W_j \mid H] - \frac{\rho^2}{2} V_j [W_j \mid H]
+        \biggr] \\
+        &\quad +
+        (1-\pi) E\biggl[
+            \rho E_j [W_j \mid L] - \frac{\rho^2}{2} V_j [W_j \mid L]
+        \biggr] \\
+    &= \rho r W_0 \\
+        &\quad + 
+        \rho \tilde q'_j \biggl(
+            \pi E_j [\tilde f - \tilde p r \mid H] +
+            (1-\pi) E_j [\tilde f - \tilde p r \mid L]
+        \biggr) \\
+        &\quad -
+        \frac{\rho^2}{2} \tilde q'_j \biggl(
+            \pi V_j [\tilde f - \tilde p r \mid H] +
+            (1-\pi) V_j [\tilde f - \tilde p r \mid L]
+        \biggr) \tilde q_j
+\end{align*}
+
+\newpage
+
+\maketitle
+
+A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. Signals usuall\footnote{A noteworthy exception is \textcite{breon-drish_existence_2015}, which allows signals and payoff distributions to vary to a greater degree -- namely, that the density of the payoff conditional on a private signal ($P(\tilde f \mid \eta_j)$, in terms of \textcite{kacperczyk_rational_2016}) be a member of the exponential family of distributions.} take the form of the true payoff with additive Gaussian nois, $\eta_j = \tilde f + \epsilon_j$, for investor $j$, signal $\eta_j$, payoff vector $\tilde f$, and noise term $\epsilon_j$. 
+
+I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
+
+\todo{lit review here}
+
+\section{Model framework}
+
+Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016},  which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
+
+The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
+
+I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with a single factor structure. Assets $1,2,\dots,n-1$ represent specific assets with idiosyncratic shocks, while the $n$th asset is a composite asset with only a common shock. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a latent variable. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
+
+$$
+P(s) = \begin{cases}
+    \pi & \text{ if } s = H \\
+    1-\pi & \text{ if } s = L \\
+\end{cases}
+$$
+
+Importantly, asset payoffs are governed by two different stochastic processes conditional on state. Payoffs of the $n$ assets are written
+
+\begin{align}
+    f_i &= \mu_i(s) + b_i z_n + z_i, \quad i \in \{1,\dots,n-1\}    \\
+    f_n &= \mu_n(s) + z_n \\
+    z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma(s))
+\end{align}
+
+\noindent That is, both the mean payoff vector $\mu(s) = [\mu_1(s),\mu_2(s),\dots,\mu_n(s)]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma(s)$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.
+
+% \newpage
+% \printbibliography
+
+\end{document}
