@@ -123,7 +123,39 @@ b = randn(n_assets - 1)
 risk_variance(s_prob, Σ)
 risk_expectation(s_prob, μ)
 
-p = eq_price(ρ, r, μ, Σ, s_prob, rand_x, missing)
+# p = eq_price(ρ, r, μ, Σ, s_prob, rand_x, missing)
+
+# Testing decomposition intuition
+function eigenstuff(S)
+    Σ_eigen = eigen(S)
+    data = rand(MvNormal(zeros(n_assets), S), 10000)
+    G = Σ_eigen.vectors
+    L = diagm(Σ_eigen.values)
+
+    inverted = data'inv(G)
+
+    @info "" S G L G*L*G' cov(inverted)
+
+    return L
+end
+
+function gmm_covar(μ, Σ)
+    mm = make_mixture(μ, Σ)
+    data = rand(mm, 100000)
+
+    weights = mm.prior.p
+    mu_bar = sum(weights .* μ)
+    direct_cov = sum(weights[i] .* Σ[i] for i in 1:length(Σ))
+    mean_diff_term = sum(weights[i] .* (μ[i] - mu_bar)*(μ[i] - mu_bar)' for i in 1:length(Σ))
+    C = direct_cov + mean_diff_term
+
+    return C
+end
+
+L1 = eigenstuff(Σ[1])
+L2 = eigenstuff(Σ[2])
+C = gmm_covar(μ, Σ)
+L3 = eigenstuff(C)
 
 
 # plot(z -> pdf(mm, z), -1:1, -1:1)

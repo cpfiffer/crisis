@@ -35,6 +35,8 @@ url=false]{biblatex}
 \begin{document}
 
 \newcommand{\Gauss}{\mathcal{N}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\E}{\text{E}}
 
 Stochastic variables:
 
@@ -136,7 +138,7 @@ Much of my notation and model structure follows from \textcite{kacperczyk_ration
 
 The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
 
-I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with a single factor structure. Assets $1,2,\dots,n-1$ represent specific assets with idiosyncratic shocks, while the $n$th asset is a composite asset with only a common shock. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a latent variable. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
+I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with an arbitrary factor structure given by principal components. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
 
 $$
 P(s) = \begin{cases}
@@ -148,12 +150,29 @@ $$
 Importantly, asset payoffs are governed by two different stochastic processes conditional on state. Payoffs of the $n$ assets are written
 
 \begin{align}
-    f_i &= \mu_i(s) + b_i z_n + z_i, \quad i \in \{1,\dots,n-1\}    \\
-    f_n &= \mu_n(s) + z_n \\
-    z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma(s))
+    f_i &= \mu_{i,s} + z_i\\
+    z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s) \\
+    f &\sim \Gauss(\mu_{s}, \Sigma_s)
 \end{align}
 
-\noindent That is, both the mean payoff vector $\mu(s) = [\mu_1(s),\mu_2(s),\dots,\mu_n(s)]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma(s)$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.
+\noindent That is, both the mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure. \footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
+
+\begin{align}
+    \tilde f \mid s \sim \Gauss(\Gamma_s^{-1} \mu_s, \Lambda_s)
+\end{align}
+
+\noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$. My model
+
+https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures
+}
+
+Investors have mean-variance preferences over terminal wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utility is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
+
+\begin{align}
+    U_j = \rho \E_j[W_j] + \frac{\rho^2}{2} \Var_j[W_j]
+\end{align}
+
+\noindent for law of motion on wealth $W_j = r W_0 + q'_j (f - pr)$.
 
 % \newpage
 % \printbibliography
