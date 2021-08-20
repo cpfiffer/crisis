@@ -10,17 +10,6 @@ using Random
 
 Random.seed!(0)
 
-# Construct Gamma matrix.
-function make_gamma(b)
-    b_new = [b; 1]
-    N = length(b) + 1
-    Γ = zeros(N,N)
-    Γ[diagind(Γ)] .= 1
-    Γ[:,end] = b_new
-
-    return Γ
-end
-
 function make_mixture(μ, Σ)
     return MixtureModel([MvNormal(μ[i], Σ[i]) for i in 1:length(μ)])
 end
@@ -102,7 +91,7 @@ end
 ρ = 2
 r = 1.0
 n_states = 2
-n_assets = 2
+n_assets = 5
 s_prob = 0.5
 x_bar = [0.5, 10.0]
 sigma_x = [1.0, 1.0]
@@ -114,7 +103,7 @@ rand_x = rand(MvNormal(x_bar, diagm(sigma_x)))
 iw = InverseWishart(n_assets + 3, diagm(ones(n_assets)))
 
 Σ = [rand(iw) .* 3 for i in 1:n_states]
-μ = [randn(n_assets) .* 3 .+ 5 for i in 1:n_states]
+μ = [randn(n_assets) .* 0.01 .+ 5 for i in 1:n_states]
 
 # Risk factor loadings
 b = randn(n_assets - 1)
@@ -139,6 +128,8 @@ function eigenstuff(S)
     return L
 end
 
+# Exact analytic covariance of GMM
+# https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures
 function gmm_covar(μ, Σ)
     mm = make_mixture(μ, Σ)
     data = rand(mm, 100000)
@@ -152,25 +143,34 @@ function gmm_covar(μ, Σ)
     return C
 end
 
-L1 = eigenstuff(Σ[1])
-L2 = eigenstuff(Σ[2])
-C = gmm_covar(μ, Σ)
-L3 = eigenstuff(C)
+function wealth_transition(W0, r, q, f, p)
+    return (f .- p' .* r) * q
+end
 
+function utility(rho, w)
+    return exp(-rho * w)
+end
 
-# plot(z -> pdf(mm, z), -1:1, -1:1)
+function max_utility(rho, μ, Σ; draws = 10_000)
+    mm = make_mixture(μ, Σ)
+    data = rand(mm, draws)'
+    d = vec(pdf(mm, data'))
 
-# Sampling
-# model = noisy_eq_nosignal(    
-#     x_bar, 
-#     sigma_x,
-#     μ,
-#     Σ,
-#     ρ,
-#     s_prob,
-#     1
-# )
-# sampler = Prior()
+    q = ones(n_assets) .* 1/n_assets
+    p = mean(mm)
 
-# chain = sample(model, sampler, 10_000)
-# plot(chain)
+    b = bijector(Dirichlet(q))
+    b_inv = inv(b)
+
+    wj(q) = d'map(w -> utility(rho, w), vec(wealth_transition(0.0, 1.0, b_inv(q), data, p)))
+
+    res = optimize(wj, q, LBFGS())
+
+    display(res)
+
+    display(eigen(cov(data)))
+
+    return res.minimum, b_inv(res.minimizer)
+end
+
+max_utility(ρ, μ, Σ)

@@ -9,6 +9,7 @@
 \usepackage{optidef}
 \usepackage{color,soul}
 \usepackage{physics}
+\usepackage{graphicx}
 % \setlength{\parindent}{0pt}
 
 \hfuzz=20pt 
@@ -34,9 +35,14 @@ url=false]{biblatex}
 
 \begin{document}
 
+% Shortcut variables
 \newcommand{\Gauss}{\mathcal{N}}
 \newcommand{\Var}{\text{Var}}
 \newcommand{\E}{\text{E}}
+
+% Theorem styles
+\newtheorem{definition}{Definition}
+
 
 Stochastic variables:
 
@@ -126,6 +132,8 @@ Ex-ante expected utility:
 
 \maketitle
 
+\section{Introduction}
+
 A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. Signals usuall\footnote{A noteworthy exception is \textcite{breon-drish_existence_2015}, which allows signals and payoff distributions to vary to a greater degree -- namely, that the density of the payoff conditional on a private signal ($P(\tilde f \mid \eta_j)$, in terms of \textcite{kacperczyk_rational_2016}) be a member of the exponential family of distributions.} take the form of the true payoff with additive Gaussian nois, $\eta_j = \tilde f + \epsilon_j$, for investor $j$, signal $\eta_j$, payoff vector $\tilde f$, and noise term $\epsilon_j$. 
 
 I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
@@ -152,27 +160,86 @@ Importantly, asset payoffs are governed by two different stochastic processes co
 \begin{align}
     f_i &= \mu_{i,s} + z_i\\
     z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s) \\
-    f &\sim \Gauss(\mu_{s}, \Sigma_s)
+    f &\mid s \sim \Gauss(\mu_{s}, \Sigma_s)
 \end{align}
 
-\noindent That is, both the mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure. \footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
+\noindent That is, both the mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.\footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
 
 \begin{align}
     \tilde f \mid s \sim \Gauss(\Gamma_s^{-1} \mu_s, \Lambda_s)
 \end{align}
 
-\noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$. My model
+\noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$ for some eigenvector matrix $\Gamma$. My model only permits the orthogonalization of the prior variance $\Sigma$, but in general the transforms on $\tilde q$ and $\tilde p$ will remain correlated conditional on state.
 
-https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures
+
 }
 
-Investors have mean-variance preferences over terminal wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utility is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
+Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mixture distribution with mixture weights $\pi$ and $1-\pi$. The density function is written
 
 \begin{align}
-    U_j = \rho \E_j[W_j] + \frac{\rho^2}{2} \Var_j[W_j]
+    P(f) \sim \pi \Gauss(f \mid \mu_H, \Sigma_H) + (1-\pi) \Gauss (f \mid \mu_L, \Sigma_L)
 \end{align}
 
-\noindent for law of motion on wealth $W_j = r W_0 + q'_j (f - pr)$.
+\noindent Gaussian mixture distributions have the conceptual benefit of moving payoffs outside the traditional exponential family of distributions. In principle, a mixture model with more and more components can approximate any complex joint density (\cite{nguyen_approximations_2019}). The shift towards a mixture distribution does however present some technical difficulties in that closed-form posterior distributions are not generally available.
+
+\begin{figure}
+    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
+    \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
+\end{figure}
+
+As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting. Namely, the distribution of $f$ is non-Gaussian. Non-Gaussian payoffs invalidate the Taylor expansion of the utility function that is commonly employed to simplify the investment decision.
+
+The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1]$). Investors have exponential preferences on final-period wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utilityat time 2 (after receiving private signals) is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
+
+\begin{align}
+    U_{j2} = E_j[\exp{-\rho W_j}]
+\end{align}
+
+\noindent for law of motion on wealth $W_j = r W_0 + q'_j (f - pr)$. Since wealth effects do not enter the investment decision for CARA utilities, I follow  \textcite{kacperczyk_rational_2016} and equalize all initial wealth to $W_0$.
+
+A portion of investors receive private signals $\eta_j$ about time 3 payoffs $f$. Signals take the form of additive Gaussian noise around the true payoff, where the precision of the noise is determined by investor attention allocation. The form of a private signal is
+
+\begin{align}
+    \eta_j \sim \Gauss(f, \Sigma_{\eta,j})
+\end{align}
+
+\noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is a \textit{unit} of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply higher precision, and thus a more accurate signal of $f$.
+
+Investors have limited attention, in that they cannot pay attention to all the signals they would like. Concretely, this constraint is written
+
+\begin{align}
+    \sum_{i=1}^n K_{ij} \le K_j
+\end{align}
+
+\noindent though for simplicity I equalize attention constraints across investors to $K_j = K$ for informed investors and $K_j = 0$ for uninformed investors. Uninformed investors can only use prices as signals about payoffs, whereas informed investors can use both prices and private signals. The attention constraint utilized here is common in the information choice literature -- see \textcite{kacperczyk_rational_2016}.
+
+Investors have two optimization problems to make. First, if the investor is informed, they must allocate their attention across private signals at time 1. Second, conditional on any information observed in time 1, investors construct portfolios to optimize expected utility at time 2, $U_{j2}$.
+
+The investor's information choice problem is to maximize expected time-1 utility $U_{j1}$:
+
+\begin{maxi}
+    {K_{ij}}{U_{j1} = E\bigg[ E_j[\exp{-\rho W_j}]\bigg]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+    \addConstraint{\sum_i K_{ij}}{ \le 1}
+    \addConstraint{K_{ij}}{\ge 0, \quad \forall i}
+\end{maxi}
+
+\noindent Next, the time-2 portfolio choice problem is to maximize expected utility $U_{j2}$:
+
+
+\begin{maxi}
+    {q_{j}}{U_{j1} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+\end{maxi}
+
+\todo{Transition out}
+
+\section{Equilibrium}
+
+\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using the solution from the portfolio allocation problem to determine the optimal information choice. 
+
 
 % \newpage
 % \printbibliography
