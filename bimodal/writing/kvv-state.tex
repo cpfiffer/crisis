@@ -244,7 +244,7 @@ Finally, markets must clear at price $p$ and quantities $q_j$, leading to the tr
 \noindent Market clearing requires that quantities and prices be such that all supply is allocated to an investor. I now turn to the formal declaration of an equilibrium in my setting, as in \textcite{breon-drish_existence_2015}.
 
 \begin{definition}
-    A noisy rational expectations equilibrium is a function $p(s, z, x)$ that maps the state $s$, payoff shocks $z$, and asset supply $x$ to a vector of prices for the $n$ assets, such that (a) prices are optimal:
+    A noisy rational expectations equilibrium (NREE) is a function $p(s, f, x)$ that maps the state $s$, payoffs $f$, and asset supply $x$ to a vector of prices for the $n$ assets, such that (a) prices maximize aggregate surplus:
 
     \begin{align}
         q_j(p, \eta_j) \in \arg\max_{q_j} E_j [\exp{-\rho W_j} \mid \eta_j, p], \quad \forall j \in [0,1]
@@ -254,9 +254,16 @@ Finally, markets must clear at price $p$ and quantities $q_j$, leading to the tr
 
 \end{definition}
 
-The history of the price function in noisy rational equilibrium models is an interesting one. Traditionally, generating the pricing function reduces to conjecturing that $p$ is Gaussian because it is a linear combination of Gaussians (payoff shocks $z$ and supply shocks $x$) as in \textcite{admati_noisy_1985}. Others have broadened the concept of the price as a distribution to allow for non-Gaussian payoffs such as \textcite{breon-drish_existence_2015}. \textcite{breon-drish_existence_2015} removed the limitation with non-Gaussian payoffs as long as the density is in the exponential family of distributions. 
+The history of the price function in noisy rational equilibrium models is an interesting one. Traditionally, generating the pricing function reduces to conjecturing that $p$ is Gaussian because it is a linear combination of Gaussians (payoffs $f$ and supply shocks $x$) as in \textcite{admati_noisy_1985}. Others have broadened the concept of the price as a distribution to allow for non-Gaussian payoffs such as \textcite{breon-drish_existence_2015}. \textcite{breon-drish_existence_2015} removed the limitation with non-Gaussian payoffs as long as the density is in the exponential family of distributions. 
 
-I highlight the historical context of "price as a random variable"  to illustrate my solution method \todo{somthing}
+I highlight the historical context of "price as a random variable"  to illustrate my solution method. I seek to describe the properties of the joint density $P(p, f, x, s, \eta_j)$ so as to reduce the problem of finding a price that rationalizes a NREE.
+
+\begin{itemize}
+    \item $p \mid f, x, s$ is non-stochastic.
+    \item $p$ with no conditioning must be of the same family as $f$.
+    \item $p$ is noisier than $f$ due to the stochastic supply $x$. I.e., $\Var[p] > \Var[f]$.
+    \item $P(p,f,x,s,\eta_j) = P(f,x,s,\eta_j) = P(p)$
+\end{itemize}
 
 \section{Equilibrium}
 
