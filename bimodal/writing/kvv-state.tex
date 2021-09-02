@@ -256,20 +256,82 @@ Finally, markets must clear at price $p$ and quantities $q_j$, leading to the tr
 
 The history of the price function in noisy rational equilibrium models is an interesting one. Traditionally, generating the pricing function reduces to conjecturing that $p$ is Gaussian because it is a linear combination of Gaussians (payoffs $f$ and supply shocks $x$) as in \textcite{admati_noisy_1985}. Others have broadened the concept of the price as a distribution to allow for non-Gaussian payoffs such as \textcite{breon-drish_existence_2015}. \textcite{breon-drish_existence_2015} removed the limitation with non-Gaussian payoffs as long as the density is in the exponential family of distributions. 
 
-I highlight the historical context of "price as a random variable"  to illustrate my solution method. I seek to describe the properties of the joint density $P(p, f, x, s, \eta_j)$ so as to reduce the problem of finding a price that rationalizes a NREE.
+I seek to describe the properties of the joint density $P(p, z, x, s, \eta_j)$ so as to reduce the problem of finding a price that rationalizes a NREE. I conjecture that the price function $p$ is additive in functions on the payoff and state variables ($\psi(f, s)$) and in the supply shocks ($\phi(x)$).
 
-\begin{itemize}
-    \item $p \mid f, x, s$ is non-stochastic.
-    \item $p$ with no conditioning must be of the same family as $f$.
-    \item $p$ is noisier than $f$ due to the stochastic supply $x$. I.e., $\Var[p] > \Var[f]$.
-    \item $P(p,f,x,s,\eta_j) = P(f,x,s,\eta_j) = P(p)$
-\end{itemize}
+\begin{align}
+    p(s,f,x) = A + \psi(f, s) + C x
+\end{align}
+
+\noindent for $n \times 1$ vectors $A$ and $\psi(f,s)$. I conjecture that $p$ is strictly a linear function in $x$, since $x$ is Gaussian. The most complex portion of the pricing function is $\psi(f, s)$, which has been linear in $z$ in prior works\footnote{\textcite{admati_noisy_1985} utilizes the form $p = A + \sum_j B_j \eta_j + C$. \textcite{kacperczyk_rational_2016} reduces the price function to the more succinct $p = A + B z + C x$ by allowing for a continuous quantity of investors. $A$, $B$, and $C$ generally assumed to be functions of known quantities about the payoff distribution, attention allocation, and risk tolerance.}. Unfortunately, payoffs in my model to not permit a linear function in payoff shocks $z$ and state $s$, so I cannot default to using the well-known solutions to the classic case without some modification.
+
+I conjecture that the form of $\psi(f, s)$ is a piecewise function in $s$, such that $E[\psi(f, s) \mid s] = B_s \mu_s$ for $s \in \{H, L\}$.
+
+$$
+\psi(f, s) = \begin{cases}
+    B_H f & \text{ if } s=H \\
+    B_L f & \text{ if } s=L
+\end{cases}
+$$
+
+\noindent The conjectured form of $\psi(f, s)$ is advantageous. Since the only nonlinearity in $p$ is due to $s$, the conditional distribution $p \mid s$ is Gaussian, leading to explicit closed-form solutions for various quantities of interest. The conditional Gaussian form of $p$ suggests that the matrices $A$, $B_H$, $B_L$, and $C$ will be similar to the fixed matrices of \textcite{kacperczyk_rational_2016}.
+
+Unconditional expectations of $p$ are easy to construct, since the state space of $s$ is finite and mutually exclusive:
+
+\begin{align}
+    E[p(f, s, x)] &= A + E[\psi(f,s)] \nonumber\\
+    &= A + P(s=H) E[\psi(f,s) \mid s = H] \nonumber\\
+    &\qquad\, + P(s=L) E[\psi(f,s) \mid s = L] \nonumber\\
+    &= A + \pi B_H \mu_H + (1-\pi) B_L \mu_L
+\end{align}
+
+\noindent Since $E[\psi(f,s) \mid s]=0$ by the distribution of $z \mid s$. The variance of prices is similarly easy to calculate.
+
+\begin{align}
+    \Var[p(f, s, x)] &= \Var[\psi(f, s)] + \Var[C x] \\
+                     &= \pi  B_H \bigg(\Sigma_H + (\mu_H - \overline{\mu})(\mu_H - \overline{\mu})' \bigg) B_H' \\
+                     &\quad+ (1-\pi) B_L \bigg(\Sigma_L + (\mu_L - \overline{\mu})(\mu_L - \overline{\mu})' \bigg) B_L' \\
+                     &\quad+ C \Sigma_x C'
+\end{align}
+
+Note that the ex-ante variance of prices is strictly higher when the state is non-degenerate ($\pi \notin \{0, 1\}$) because of state uncertainty in $\pi$.
 
 \section{Equilibrium}
 
-\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using the solution from the portfolio allocation problem to determine the optimal information choice. 
+\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using this solution to determine the optimal information choice. I defer to their solution, though with some added complexity due to the change in the densities of $f$, $s$, and $p$ from multivariate Gaussians to mixture distributed variables.
 
+\begin{maxi}
+    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+\end{maxi}
 
+\pagebreak
+\appendix
+
+\section{Mixture model variance}
+
+The variance-covariance matrix of variable $X$ following a Gaussian mixture distribution with means $\mu = [\mu_1, \mu_2, \dots, \mu_k]'$, covariances $\Sigma= [\Sigma_1, \Sigma_2, \dots, \Sigma_k]$, and mixture proportions $\pi = [\pi_1, \pi_2, \dots, \pi_k]'$ is\footnote{From https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures} 
+
+\begin{align}
+    \Var[X] &= E[\Var[X \mid k]] + \Var[E[X \mid k]] \\
+            &= \sum_k  \pi_k  \bigg(\Sigma_k + (\mu_k - \overline{\mu})(\mu_k - \overline{\mu})' \bigg)
+\end{align}
+
+\noindent for $\overline{\mu}=\sum_k \pi_k \mu_k$.
+
+\section{Mixture densities of $p$}
+
+The density of $p$ is given by the factored joint of payoffs $f$, states $s$, supply shocks $x$, and private signals $\eta_j$.
+
+$$
+P(p) = P(f, s, x, \eta_j) = \Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x)
+$$
+
+The conditional density after having observed prices $p$ and private signals $\eta_j$ is\footnote{https://stats.stackexchange.com/questions/348941/general-conditional-distributions-for-multivariate-gaussian-mixtures}
+
+$$
+P(f, s, x \mid \eta_j, p) = \frac{\Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x) \Gauss(\eta_j \mid f, \Sigma_j)}{\sum_s \int_f \int_x \Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x) \Gauss(\eta_j \mid f, \Sigma_j)}
+$$
 
 % \newpage
 % \printbibliography

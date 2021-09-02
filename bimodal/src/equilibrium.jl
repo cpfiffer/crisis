@@ -7,6 +7,7 @@ using StatsFuns
 using QuadGK
 using Bijectors
 using Random
+using HCubature
 
 Random.seed!(0)
 
@@ -56,6 +57,21 @@ function eq_price(ρ, r, μ, Σ, s_prob, x, η_j)
     return optimize(target, deepcopy(μ[1]), Newton())
 end
 
+
+function joint_density(f, ρ, r, μ, Σ, s_prob, x, s, η_j, σ_k, xbar, σ_x)
+    d1 = MvNormal(f, diagm(σ_k))
+    m1 = make_mixture(μ, Σ)
+    x_dist = MvNormal(xbar, diagm(σ_x))
+
+    ℓ = log(s_prob) + log(1-s_prob)
+    
+    ℓ += loglikelihood(m1, f)
+    ℓ += loglikelihood(d1, η_j)
+    ℓ += loglikelihood(x_dist, xbar + x)
+
+    return ℓ
+end
+
 @model function noisy_eq_nosignal(
     x_bar, 
     sigma_x,
@@ -87,11 +103,12 @@ end
     p = eq_price(ρ, r, μ, Σ, s_prob, x)
 end
 
+
 # Parameters
 ρ = 2
 r = 1.0
 n_states = 2
-n_assets = 5
+n_assets = 2
 s_prob = 0.5
 x_bar = [0.5, 10.0]
 sigma_x = [1.0, 1.0]
@@ -102,15 +119,22 @@ rand_x = rand(MvNormal(x_bar, diagm(sigma_x)))
 # z covariance structure.
 iw = InverseWishart(n_assets + 3, diagm(ones(n_assets)))
 
-Σ = [rand(iw) .* 3 for i in 1:n_states]
-μ = [randn(n_assets) .* 0.01 .+ 5 for i in 1:n_states]
+Σ = [rand(iw) .* 5 for i in 1:n_states]
+μ = [randn(n_assets) .+ randn() for i in 1:n_states]
 
 # Risk factor loadings
 b = randn(n_assets - 1)
-Γ = make_gamma(b)
 
 risk_variance(s_prob, Σ)
 risk_expectation(s_prob, μ)
+
+f = [4.0, 5.0]
+x = [0.0, 0.0]
+η_j = [5.6, 6.8]
+σ_k = [2.0, 2.0]
+xbar = [1.0, 1.0]
+
+
 
 # p = eq_price(ρ, r, μ, Σ, s_prob, rand_x, missing)
 
@@ -173,4 +197,29 @@ function max_utility(rho, μ, Σ; draws = 10_000)
     return res.minimum, b_inv(res.minimizer)
 end
 
-max_utility(ρ, μ, Σ)
+# max_utility(ρ, μ, Σ)
+
+mm = make_mixture(μ, Σ)
+
+prior(z) = loglikelihood(mm, z)
+joint(z) = joint_density(z, ρ, r, μ, Σ, s_prob, x, 1.0, η_j, σ_k, xbar, sigma_x)
+
+xs = -5:0.1:5
+ys = -5:0.1:5
+joint_grid = [joint([y, x]) for x in xs, y in ys]
+prior_grid = [prior([y, x]) for x in xs, y in ys]
+
+p1 = contour(xs, ys, exp.(joint_grid) ./ exp(maximum(joint_grid)))
+p2 = contour(xs, ys, exp.(prior_grid) ./ exp(maximum(prior_grid)))
+
+# scatter!(p1, (f[1], f[2]), label="True payoff")
+# scatter!(p1, (η_j[1], η_j[2]), label="Signal")
+
+# scatter!(p2, (f[1], f[2]), label="True payoff")
+# scatter!(p2, (η_j[1], η_j[2]), label="Signal")
+
+plot(
+    p1,
+    p2
+)
+
