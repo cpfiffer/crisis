@@ -321,17 +321,40 @@ The variance-covariance matrix of variable $X$ following a Gaussian mixture dist
 
 \section{Mixture densities of $p$}
 
-The density of $p$ is given by the factored joint of payoffs $f$, states $s$, supply shocks $x$, and private signals $\eta_j$.
+The joint density of prices $p$, payoff shocks $z$, states $s$, supply shocks $x$, and private signals $\eta_j$. Denote the vector of observed signals $\eta = \{\eta_1, \eta_2, \dots, \eta_J\}$.
+
+The market signal $\eta$ is equivalent to
 
 $$
-P(p) = P(f, s, x, \eta_j) = \Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x)
+\eta = \int_0^1 \eta_j dj = E[\eta_j] = f
 $$
 
-The conditional density after having observed prices $p$ and private signals $\eta_j$ is\footnote{https://stats.stackexchange.com/questions/348941/general-conditional-distributions-for-multivariate-gaussian-mixtures}
+\noindent However, this signal does not clarify exactly the state of the economy. The average variance of this signal is given by
 
 $$
-P(f, s, x \mid \eta_j, p) = \frac{\Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x) \Gauss(\eta_j \mid f, \Sigma_j)}{\sum_s \int_f \int_x \Gauss(f \mid s, \mu_s, \Sigma_s) P(s \mid \pi) \Gauss(x \mid \Sigma_x) \Gauss(\eta_j \mid f, \Sigma_j)}
+\Var[\eta] = \int_0^1 \Sigma_j dj = \Sigma_\eta
 $$
+
+\noindent where $\Sigma_\eta$ is a diagonal matrix with the $i$th diagonals $\int_0^1 K^{-1}_{ij} dj$. We then have the distribution
+
+$$
+\eta \sim \Gauss(f, \Sigma_\eta)
+$$
+
+From the market's perspective, the underlying state $s$ is still not known since the signal $\eta$ is stochastic. The posterior distribution of the payoffs $f$ conditional on observing the aggregate signal $\eta$ is then
+
+\begin{align*}
+    P(f \mid \eta) &= \pi P(f \mid s=H, \eta) + (1-\pi) P(f \mid s=L, \eta) \\
+\end{align*}
+
+\noindent where the posterior conditional on $s$ is
+
+\begin{align*}
+    P(f \mid s, \eta) &= \Gauss(\hat \mu_s, \hat \Sigma_s) \\
+    \hat \Sigma_s &= (\Sigma_s^{-1} + \Sigma_\eta^{-1})^{-1} \\
+    \hat \mu_s &= \hat \Sigma_s^{-1} (\Sigma_s^{-1} \mu_s + \Sigma_\eta^{-1} \eta)
+\end{align*}
+
 
 % \newpage
 % \printbibliography
