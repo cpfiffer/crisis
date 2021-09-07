@@ -3,6 +3,5 @@
     "spellright.documentTypes": [
         "markdown",
         "plaintext"
-    ],
-    "julia.environmentPath": "/home/cameron/.julia/environments/v1.6"
+    ]
 }
