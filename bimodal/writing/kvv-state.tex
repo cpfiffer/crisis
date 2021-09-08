@@ -10,6 +10,8 @@
 \usepackage{color,soul}
 \usepackage{physics}
 \usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
 % \setlength{\parindent}{0pt}
 
 \hfuzz=20pt 
@@ -295,6 +297,95 @@ Unconditional expectations of $p$ are easy to construct, since the state space o
 
 Note that the ex-ante variance of prices is strictly higher when the state is non-degenerate ($\pi \notin \{0, 1\}$) because of state uncertainty in $\pi$.
 
+\subsection{The price signal}
+
+Prices carry informational content is a long-standing finding in noisy rational expectations models like \textcite{admati_noisy_1985} and others. My setting requires a modification from the traditional price density, which is linear in payoff and supply shocks $z$ and $x$. The traditional density simply does not apply in my setting the conditional expectations of prices are non-Gaussian. Investors perceive prices as stochastic quantities that reveal information about other stochastic variables (state and payoffs), but this perception requires deriving the distribution that prices are drawn from.
+
+The goal of this section is to find the joint density of prices $p$, payoff shocks $z$, states $s$, supply shocks $x$, and private signals $\eta_j$. Denote the (infinite) vector of observed signals $\eta = \{\eta_1, \eta_2, \dots, \eta_J\}$.
+
+First, however, the density of prices must be defined. As in other works, I aggregate all signals distributed to investors on the unit interval, yielding the market signal $\eta$:
+
+$$
+\eta = \int_0^1 \eta_j dj = E[\eta_j] = f
+$$
+
+\noindent $\eta$ represents the aggregation of investors' private signals, but it is still noisy. The market signal $\eta$ does not clarify exactly the state of the economy. The average variance of this signal is given by
+
+$$
+\Var[\eta] = \int_0^1 \Sigma_j dj = \Sigma_\eta
+$$
+
+\noindent where $\Sigma_\eta$ is a diagonal matrix with the $i$th diagonals $\int_0^1 K^{-1}_{ij} dj$ -- these are the average attention allocation across investors. $\eta$ is now Gaussian:
+
+$$
+\eta \sim \Gauss(f, \Sigma_\eta)
+$$
+
+From the market's perspective, the underlying state $s$ is still not known since the signal $\eta$ is stochastic. The posterior distribution of the payoffs $f$ conditional on observing the aggregate signal $\eta$ is then
+
+\begin{align*}
+    P(f \mid \eta) &= P(s=H\mid f) P(f \mid s=H, \eta) + P(s=L\mid f) P(f \mid s=L, \eta) \\
+\end{align*}
+
+\noindent The posterior distribution $f \mid s, \eta$ is simple enough to calculate, since $f$ and $\eta$ are jointly Gaussian when conditioned on $s$. The posterior $f \mid s, \eta$ is written
+
+$$
+f \mid s, \eta \sim \Gauss(\hat \mu_s, \hat \Sigma_s)
+$$
+
+\noindent where 
+
+\begin{align*}
+    \hat \mu_s &= 
+        \mu_s + \Sigma_s(\Sigma_s + \Sigma_\eta)^{-1} (\eta - \mu_s) \\
+    \hat \Sigma_s &= 
+        \Sigma_s + \Sigma_s(\Sigma_s + \Sigma_\eta)^{-1} \Sigma_s
+\end{align*}
+
+Next, I calculate the posterior probability of each state $s \mid \eta$, given by Baye's rule:
+
+$$
+P(s \mid \eta) = \frac{P(\eta \mid s) P(s)}{
+    P(\eta \mid s=H)P(s=H) + P(\eta \mid s=L)P(s=L)
+}
+$$
+
+where 
+
+$$
+\eta \mid s \sim \Gauss(\mu_s, \Sigma_s + \Sigma_\eta)
+$$
+
+\noindent As there are only two states, it is sometimes convenient to refer to the relative probabilities of $P(s=H\mid \eta)$ and $P(s=L \mid \eta)$ in terms of their odds ratio
+
+$$
+\mathcal{C}(s=H) = \frac{P(\eta \mid s=H)}{P(\eta \mid s=L)}
+$$
+
+Note that the attention covariance matrix $\Sigma_\eta$ appears in the posteriors for the payoff density $f$ and the state density $s$. Allocating more attention to certain assets allow the price density to more completely identify the payoff state.
+
+\todo{Derive the joint density of prices}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../plots/posterior/[1, 9].png}
+        \caption{$\bar K_1 = 1, \bar K_2 = 9$}
+        \label{fig:unimode}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../plots/posterior/[9, 1].png}
+        \caption{$\bar K_1 = 9, \bar K_2 = 1$}
+        \label{fig:bimode}
+    \end{subfigure}
+    \caption{Densities of the posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate the bimondal distribution of payoffs when attention on asset 2 is high ($\overline K_2 = 1$).}
+    \label{fig:three graphs}
+\end{figure}
+
+
 \section{Equilibrium}
 
 \textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using this solution to determine the optimal information choice. I defer to their solution, though with some added complexity due to the change in the densities of $f$, $s$, and $p$ from multivariate Gaussians to mixture distributed variables.
@@ -318,43 +409,6 @@ The variance-covariance matrix of variable $X$ following a Gaussian mixture dist
 \end{align}
 
 \noindent for $\overline{\mu}=\sum_k \pi_k \mu_k$.
-
-\section{Mixture densities of $p$}
-
-The joint density of prices $p$, payoff shocks $z$, states $s$, supply shocks $x$, and private signals $\eta_j$. Denote the vector of observed signals $\eta = \{\eta_1, \eta_2, \dots, \eta_J\}$.
-
-The market signal $\eta$ is equivalent to
-
-$$
-\eta = \int_0^1 \eta_j dj = E[\eta_j] = f
-$$
-
-\noindent However, this signal does not clarify exactly the state of the economy. The average variance of this signal is given by
-
-$$
-\Var[\eta] = \int_0^1 \Sigma_j dj = \Sigma_\eta
-$$
-
-\noindent where $\Sigma_\eta$ is a diagonal matrix with the $i$th diagonals $\int_0^1 K^{-1}_{ij} dj$. We then have the distribution
-
-$$
-\eta \sim \Gauss(f, \Sigma_\eta)
-$$
-
-From the market's perspective, the underlying state $s$ is still not known since the signal $\eta$ is stochastic. The posterior distribution of the payoffs $f$ conditional on observing the aggregate signal $\eta$ is then
-
-\begin{align*}
-    P(f \mid \eta) &= \pi P(f \mid s=H, \eta) + (1-\pi) P(f \mid s=L, \eta) \\
-\end{align*}
-
-\noindent where the posterior conditional on $s$ is
-
-\begin{align*}
-    P(f \mid s, \eta) &= \Gauss(\hat \mu_s, \hat \Sigma_s) \\
-    \hat \Sigma_s &= (\Sigma_s^{-1} + \Sigma_\eta^{-1})^{-1} \\
-    \hat \mu_s &= \hat \Sigma_s^{-1} (\Sigma_s^{-1} \mu_s + \Sigma_\eta^{-1} \eta)
-\end{align*}
-
 
 % \newpage
 % \printbibliography
