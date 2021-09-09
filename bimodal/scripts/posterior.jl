@@ -4,14 +4,14 @@ using Optim
 using StatsFuns
 using LinearAlgebra
 
-μ1 = [6.0, .0]
-μ2 = [-5.0, .0]
+μ1 = [3.0, 1.0]
+μ2 = [-3.0, -1.0]
 
-Σ1 = [1.0 0.25; 0.25 1.0] .* 5
-Σ2 = [2.0 0.25; 0.25 2.0] .* 5
+Σ1 = [1.0 0; 0 1.0] 
+Σ2 = [1.0 0; 0 1.0] .* 2
 # Σ1 = [2.0 0; 0. 1.0]
 # Σ2 = [1.0 0; 0 2.0]
-Σj = [5 0.0; 0.0 1.0]
+Σj = [1 0.0; 0.0 1.0] .* 5
 # Σj = [1 0.0; 0.0 5.0] .* 5
 
 g1 = MvNormal(μ1, Σ1)
@@ -69,7 +69,7 @@ function analytic_posterior(f, η, Σj)
     return logpdf(new_mixture, f)
 end
 
-function density_grid(η, Σj, bound=10, step=.1)
+function density_grid(η, Σj, bound=5, step=.1)
     xs = -bound:step:bound
     ys = -bound:step:bound
     return xs, 
@@ -117,8 +117,8 @@ function plot_post(η, Σj)
     return plot(p3, p2, p4, p5, dpi=300)
 end
 
-plot_post([0, 0], diagm([9,1]))
-plot_post([0, 0], diagm([1,9]))
+plot_post([0, 0], diagm([10,0.1]))
+plot_post([0, 0], diagm([0.1,10]))
 
 # for x in 1:2:10
 #     for y in 1:2:10

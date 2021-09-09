@@ -359,10 +359,12 @@ $$
 \noindent As there are only two states, it is sometimes convenient to refer to the relative probabilities of $P(s=H\mid \eta)$ and $P(s=L \mid \eta)$ in terms of their odds ratio
 
 $$
-\mathcal{C}(s=H) = \frac{P(\eta \mid s=H)}{P(\eta \mid s=L)}
+\mathcal{C}(s=H) = \frac{P(s=H \mid \eta)}{P(s=L \mid \eta)}
 $$
 
-Note that the attention covariance matrix $\Sigma_\eta$ appears in the posteriors for the payoff density $f$ and the state density $s$. Allocating more attention to certain assets allow the price density to more completely identify the payoff state.
+Note that the attention covariance matrix $\Sigma_\eta$ appears in the posteriors for the payoff density $f$ and the state density $s$. Allocating more attention to certain assets allow the price density to more completely identify the payoff state. Figure \ref{fig:swapped} demonstrates that high levels of attention to one asset or another can yield remarkably different posterior modes, which suggests that aggregate attention can cause prices to push investors towards one mode or the other.
+
+
 
 \todo{Derive the joint density of prices}
 
@@ -370,19 +372,19 @@ Note that the attention covariance matrix $\Sigma_\eta$ appears in the posterior
     \centering
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[1, 9].png}
-        \caption{$\bar K_1 = 1, \bar K_2 = 9$}
+        \includegraphics[width=\textwidth]{../plots/posterior/[0.1, 10.0].png}
+        \caption{$\bar K_1 = 0.1, \bar K_2 = 10$}
         \label{fig:unimode}
     \end{subfigure}
     \hfill
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[9, 1].png}
-        \caption{$\bar K_1 = 9, \bar K_2 = 1$}
+        \includegraphics[width=\textwidth]{../plots/posterior/[10.0, 0.1].png}
+        \caption{$\bar K_1 = 10, \bar K_2 = 0.1$}
         \label{fig:bimode}
     \end{subfigure}
-    \caption{Densities of the posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate the bimondal distribution of payoffs when attention on asset 2 is high ($\overline K_2 = 1$).}
-    \label{fig:three graphs}
+    \caption{The posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate that the modal point varies dramatically with attention. State 2, the mode on the bottom of the figure, has twice the variance of state 1.}
+    \label{fig:swapped}
 \end{figure}
 
 
