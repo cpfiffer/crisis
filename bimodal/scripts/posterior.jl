@@ -155,6 +155,11 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, Σ_x)
 
     Σ_hat_1 = Symmetric(S_11 - S_12 * inv(S_22) * S_21)
     μ_hat_1 = μ1 + S_12 * inv(S_22) * (obs - means)
+
+    # display(Σ_hat_1)
+    # display(S_11)
+    # display(S_12)
+    # display(S_22)
     post1 = MvNormal(μ_hat_1, Σ_hat_1)
 
     # Second posterior
@@ -199,6 +204,25 @@ function q_star(p, fspace)
     end
 end
 
+function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+    return (s_bar .* Σ_bar_1 + (1-s_bar).*Σ_bar_2)
+end
+
+function A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
+    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+    return s_bar .* μ1 + (1-s_bar) .* μ2 - ρ .* sb * x_bar
+end
+
+function B(s_bar, Σ_bar_1, Σ_bar_2)
+    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+    return I - sb * inv(2 .* inv(Σ1) + 2 .* inv(Σ2))
+end
+
+function C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
+    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+    return -ρ .* sb * (I + 1/ρ^2 * inv(Σx) * Ση_bar)
+end
+
 # The loop!
 function equilibrium(Σj, ρ=0.5, J = 100)
     # Setup
@@ -218,24 +242,39 @@ function equilibrium(Σj, ρ=0.5, J = 100)
     # Generate signals
     η = [rand(signal(f, Σj)) for _ in 1:J]
 
-    # Conjecture A, B, C matrices
-    A = 0.5 .* μ1 + 0.5 .* μ2 - ρ .* Σj*x_bar
-    B = [I - Σj * (0.25 .* inv(Σ1) + 0.25 .* inv(Σ2)) for _ in 1:J]
-    C = -ρ .* Σj * (I + 1/ρ^2 * inv(Σx) * inv(Σj)')
+    # General inits
+    s_bar = 0.5
+    ρ = 1
+    Σ_bar_1 = diagm(ones(n_assets))
+    Σ_bar_2 = diagm(ones(n_assets))
+    Ση_bar = diagm(ones(n_assets))
 
-    p = A + sum(B[j] * η[j] for j in 1:J) / J + C * x
-    println("Price conjecture $p")
-    println("Payoffs          $f")
+    for i in 1:100
+        # Conjecture A, B, C matrices
+        a = A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
+        b = B(s_bar, Σ_bar_1, Σ_bar_2)
+        c = C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
 
-    # Calculate consumer posterior
-    for j in 1:2
-        # Find the integral
-        zs = consumer_posterior(f, η[j], Σj, p, A, B[j], C, x_bar, Σx)
-        display(zs[1])
-        # contour(xs, ys, zs, title="$j") |> display
-        # sleep(2)
+        p = a + b*f + c*x
+        println("Iteration        $i")
+        println("Price conjecture $p")
+        println("Payoffs          $f")
+        println("s_bar            $s_bar")
+        println("s                $s\n")
 
+        # Calculate consumer posterior
+        s_bar = 0
+        Σ_bar_1 = zeros(n_assets, n_assets)
+        Σ_bar_2 = zeros(n_assets, n_assets)
+        for j in 1:J
+            # Find the integral
+            zs = consumer_posterior(f, η[j], Σj, p, a, b, c, x_bar, Σx)
+            
+            s_bar += zs[1][1]  ./ J
+            Σ_bar_1 += zs[2][1].Σ ./ J
+            Σ_bar_2 += zs[2][2].Σ ./ J
+        end
     end
 end
 
-equilibrium([1.0 0.0; 0.0 2.0])
+equilibrium([1.0 0.0; 0.0 0.5])
