@@ -5,6 +5,7 @@ using StatsFuns
 using LinearAlgebra
 using QuadGK
 using HCubature
+using Random
 
 μ1 = [1.0, 1.0]
 μ2 = [-1.0, -1.0]
@@ -186,7 +187,7 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, Σ_x)
     denom = logsumexp(state1, state2)
     x = exp(state1 - denom)
 
-    return [x, 1-x], [post1, post2]
+    return (s_hat=x, μ1=μ_hat_1, Σ1=Σ_hat_1, μ2=μ_hat_2, Σ2=Σ_hat_2)
 end
 
 # Optimum quantity
@@ -208,26 +209,41 @@ function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
     return (s_bar .* Σ_bar_1 + (1-s_bar).*Σ_bar_2)
 end
 
-function A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
-    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
-    return s_bar .* μ1 + (1-s_bar) .* μ2 - ρ .* sb * x_bar
+# function A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
+#     sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+#     return s_bar .* μ1 + (1-s_bar) .* μ2 - ρ .* sb * x_bar
+# end
+
+# function B(s_bar, Σ_bar_1, Σ_bar_2)
+#     sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+#     return I - sb * inv(2 .* inv(Σ1) + 2 .* inv(Σ2))
+# end
+
+# function C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
+#     sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+#     return -ρ .* sb * (I + 1/ρ^2 * inv(Σx) * Ση_bar)
+# end
+
+function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
+    return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l)
 end
 
-function B(s_bar, Σ_bar_1, Σ_bar_2)
-    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
-    return I - sb * inv(2 .* inv(Σ1) + 2 .* inv(Σ2))
-end
-
-function C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
-    sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
-    return -ρ .* sb * (I + 1/ρ^2 * inv(Σx) * Ση_bar)
+function price_matrices(θ, n_assets)
+    offset = n_assets^2
+    a = reshape(θ[1:n_assets], n_assets)
+    b = reshape(θ[n_assets+1:n_assets+offset], n_assets, n_assets)
+    c = reshape(θ[n_assets+1+offset:end], n_assets, n_assets)
+    return a, b, c
 end
 
 # The loop!
-function equilibrium(Σj, ρ=0.5, J = 100)
+function equilibrium(Σj, ρ=0.5, J = 200)
     # Setup
     xs = -5:1:5
     ys = -5:1:5
+
+    # Set a seed
+    Random.seed!(1)
 
     # Draw a state
     s = rand(Categorical([0.5, 0.5]))
@@ -243,38 +259,67 @@ function equilibrium(Σj, ρ=0.5, J = 100)
     η = [rand(signal(f, Σj)) for _ in 1:J]
 
     # General inits
-    s_bar = 0.5
     ρ = 1
-    Σ_bar_1 = diagm(ones(n_assets))
-    Σ_bar_2 = diagm(ones(n_assets))
-    Ση_bar = diagm(ones(n_assets))
 
-    for i in 1:100
+    # Make a grid
+    init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), vec(diagm(ones(n_assets))))
+    p = Iterators.product((-10:1:10 for _ in 1:length(init_θ))...)
+
+    function target(θ)
         # Conjecture A, B, C matrices
-        a = A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
-        b = B(s_bar, Σ_bar_1, Σ_bar_2)
-        c = C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
-
+        a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
-        println("Iteration        $i")
-        println("Price conjecture $p")
-        println("Payoffs          $f")
-        println("s_bar            $s_bar")
-        println("s                $s\n")
 
-        # Calculate consumer posterior
-        s_bar = 0
-        Σ_bar_1 = zeros(n_assets, n_assets)
-        Σ_bar_2 = zeros(n_assets, n_assets)
-        for j in 1:J
-            # Find the integral
-            zs = consumer_posterior(f, η[j], Σj, p, a, b, c, x_bar, Σx)
-            
-            s_bar += zs[1][1]  ./ J
-            Σ_bar_1 += zs[2][1].Σ ./ J
-            Σ_bar_2 += zs[2][2].Σ ./ J
+        try
+            # Calculate consumer posterior
+            total_q = zeros(n_assets)
+            for j in 1:J
+                # Find the integral
+                zs = consumer_posterior(f, η[j], Σj, p, a, b, c, x_bar, Σx)
+                
+                q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                total_q += q
+            end
+
+            norm_diff = sum((total_q - x).^2)
+            # param_norm = sum(θ.^2)
+            # println("Price conjecture $p")
+            # println("Payoffs          $f")
+            # println("Total q          $total_q")
+            # println("Total x          $x")
+            # println("Norm             $norm_diff")
+            # println("Param norm       $param_norm")
+            # println("a                $a")
+            # println("b                $b")
+            # println("c                $c")
+            # println("s                $s\n")
+
+
+
+            return norm_diff
+        catch e
+            # rethrow(e)
+            return Inf
         end
     end
+
+    best = nothing
+    best_val = Inf
+    # best = collect(first(p))
+    # best_val = target(best)
+    for thing in p
+        cthing = collect(thing)
+        val = target(cthing)
+        if val < best_val
+            println("theta: $cthing, value: $val")
+            best = cthing
+            best_val = val
+        end
+    end
+
+    # res = optimize(target, init_θ, SimulatedAnnealing(), Optim.Options(iterations=10000000))
+
+    return best, best_val
 end
 
-equilibrium([1.0 0.0; 0.0 0.5])
+v = equilibrium([1.0 0.0; 0.0 0.5])
