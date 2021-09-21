@@ -6,11 +6,15 @@ using LinearAlgebra
 using QuadGK
 using HCubature
 using Random
+using ForwardDiff
+using NLsolve
 
+# true_s = [1.0, 0.0] # Degenerate
+true_s = [0.5, 0.5]
 μ1 = [1.0, 1.0]
 μ2 = [-1.0, -1.0]
 
-Σ1 = [1.0 0; 0 1.0] 
+Σ1 = [1.0 0; 0 1.0]
 Σ2 = [1.0 0; 0 1.0] .* 2
 # Σ1 = [2.0 0; 0. 1.0]
 # Σ2 = [1.0 0; 0 2.0]
@@ -18,7 +22,7 @@ using Random
 # Σj = [1 0.0; 0.0 5.0] .* 5
 
 # Supply settings
-x_bar = [1.0, 1.0]
+x_bar = [0.0, 0.0]
 Σx = [1.0 0.0; 0.0 1.0]
 supply_dist = MvNormal(x_bar, Σx)
 
@@ -26,7 +30,7 @@ supply_dist = MvNormal(x_bar, Σx)
 g1 = MvNormal(μ1, Σ1)
 g2 = MvNormal(μ2, Σ2)
 
-mm = MixtureModel([g1, g2], [0.5, 0.5])
+mm = MixtureModel([g1, g2], true_s)
 signal(f, Σj) = MvNormal(f, Σj)
 
 function to_density(M)
@@ -60,8 +64,8 @@ function posterior_state(η, Σj)
     d2 = MvNormal(μ2, Σ2 + Σj)
 
     # Probabilities
-    state1 = logpdf(d1, η) + log(0.5)
-    state2 = logpdf(d2, η) + log(0.5)
+    state1 = logpdf(d1, η) + log(true_s[1])
+    state2 = logpdf(d2, η) + log(true_s[2])
     denom = logsumexp(state1, state2)
 
     x = exp(state1 - denom)
@@ -77,8 +81,8 @@ end
 function density_grid(η, Σj, bound=5, step=.1)
     xs = -bound:step:bound
     ys = -bound:step:bound
-    return xs, 
-        ys, 
+    return xs,
+        ys,
         [posterior([x,y], η, Σj) for x in xs, y in ys],
         [logpdf(mm, [x,y]) for x in xs, y in ys],
         [logpdf(signal([x,y], Σj), η) for x in xs, y in ys],
@@ -97,23 +101,23 @@ function plot_post(η, Σj)
     likelihood = to_density(likelihood)
     analytic = to_density(analytic)
 
-    p1 = contour(xs, ys, 
-        post, title="Posterior", 
+    p1 = contour(xs, ys,
+        post, title="Posterior",
         legend=false, levels=nlines, size = (px, py))
     scatter!(p1, (η[2], η[1]))
-    p2 = contour(xs, ys, 
-        likelihood, title="Likelihood", 
+    p2 = contour(xs, ys,
+        likelihood, title="Likelihood",
         legend=false, levels=nlines, size = (px, py))
     scatter!(p2, (η[2], η[1]))
-    p3 = contour(xs, ys, 
-        prior, title="Prior", 
+    p3 = contour(xs, ys,
+        prior, title="Prior",
         legend=false, levels=nlines, size = (px, py))
     scatter!(p3, (η[2], η[1]))
-    p4 = contour(xs, ys, 
-        analytic, 
+    p4 = contour(xs, ys,
+        analytic,
         legend=false, levels=nlines, dpi=80)
     scatter!(p4, (η[2], η[1]))
-    p5 = bar(posterior_state(η, Σj)[1], legend=false, 
+    p5 = bar(posterior_state(η, Σj)[1], legend=false,
         title="State probability",
         size = (px, py), dpi=300)
 
@@ -144,7 +148,7 @@ function utility(f, p, q; r=1.0, W0 = 1.0, ρ = 1)
 end
 
 # Individual posterior
-function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, Σ_x)
+function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=true, plotting=true)
     # First posterior
     S_11 = Σ1
     S_12 = [B*Σ1 Σ1]
@@ -179,35 +183,61 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, Σ_x)
     # Posterior states
     d1 = MvNormal(μ1, Σ1 + Σj)
     d2 = MvNormal(μ2, Σ2 + Σj)
-    price_1 = MvNormal(A + B*f + C*x_bar, Symmetric(B*Σ1*B' + C*Σ_x*C'))
-    price_2 = MvNormal(A + B*f + C*x_bar, Symmetric(B*Σ2*B' + C*Σ_x*C'))
+    price_1 = MvNormal(A + B*f + C*x, Symmetric(B*Σ1*B' + C*Σ_x*C'))
+    price_2 = MvNormal(A + B*f + C*x, Symmetric(B*Σ2*B' + C*Σ_x*C'))
 
-    state1 = logpdf(d1, η) + logpdf(price_1, p) + log(0.5)
-    state2 = logpdf(d2, η) + logpdf(price_2, p) + log(0.5)
+    state1 = logpdf(d1, η) + logpdf(price_1, p) + log(true_s[1])
+    state2 = logpdf(d2, η) + logpdf(price_2, p) + log(true_s[2])
     denom = logsumexp(state1, state2)
-    x = exp(state1 - denom)
+    s_hat = exp(state1 - denom)
 
-    return (s_hat=x, μ1=μ_hat_1, Σ1=Σ_hat_1, μ2=μ_hat_2, Σ2=Σ_hat_2)
-end
-
-# Optimum quantity
-function q_star(p, fspace)
-    # Set up target function
-    function target(q)
-        # Calculate probability field
-        probs = to_density(consumer_posterior(f, η_j, Σj, p, price_mm) for f in fspace)
-
-        U = 0.0 # Expected utility
-        for (i, f) in enumerate(fpsace)
-            # Get utility grid
-            U += probs[i] * utility(f, η_j, Σ_j, p, conditional_mm)
-        end
+    if verbose
+        println("Consumer posterior:")
+        println("\tμ1:       $μ1")
+        println("\tμ_hat_1:  $μ_hat_1")
+        println("\tμ2:       $μ2")
+        println("\tμ_hat_2:  $μ_hat_2")
+        println("\tΣ1:       $Σ1")
+        println("\tΣ_hat_1:  $Σ_hat_1")
+        println("\tΣ2:       $Σ2")
+        println("\tΣ_hat_2:  $Σ_hat_2")
+        println("\tAttention: $Σj")
+        println("\ts_hat:    $s_hat")
     end
+
+    if plotting
+        # Mixtures
+        prior = MixtureModel([g1, g2], true_s)
+        posterior = MixtureModel([post1, post2], [s_hat, 1-s_hat])
+
+        # Plotting variables
+        bounds = -5:0.1:5
+        
+        # Contour values
+        z_prior = [pdf(prior, [x,y]) for x in bounds, y in bounds]
+        z_post = [pdf(posterior, [x,y]) for x in bounds, y in bounds]
+
+        # Contour plots
+        plot1 = contour(bounds, bounds, z_prior, title="Prior")
+        plot2 = contour(bounds, bounds, z_post, title="Posterior")
+
+        for subplot in [plot1, plot2]
+            scatter!(subplot, [(f[2], f[1])], label="Payoffs")
+            scatter!(subplot, [(p[2], p[1])], label="Price")
+            scatter!(subplot, [(η[2], η[1])], label="Personal signal", legend=false)
+        end
+
+        plot(plot1, plot2) |> display
+        sleep(0.1)
+
+    end
+
+    return (s_hat=s_hat, μ1=μ_hat_1, Σ1=Σ_hat_1, μ2=μ_hat_2, Σ2=Σ_hat_2)
 end
 
-function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
-    return (s_bar .* Σ_bar_1 + (1-s_bar).*Σ_bar_2)
-end
+# function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
+#     return (s_bar .* Σ_bar_1 + (1-s_bar).*Σ_bar_2)
+# end
 
 # function A(μ1, μ2, ρ, s_bar, Σ_bar_1, Σ_bar_2, x_bar)
 #     sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
@@ -236,14 +266,21 @@ function price_matrices(θ, n_assets)
     return a, b, c
 end
 
+# random precision matrix
+function rand_attention(n_assets, K)
+    # Fraction
+    γ = rand(Dirichlet(n_assets, 0.5))
+    return diagm([inv(γ[i] * K) for i in 1:n_assets])
+end
+
 # The loop!
-function equilibrium(Σj, ρ=0.5, J = 200)
+function equilibrium(ρ=0.5, J = 15)
     # Setup
     xs = -5:1:5
     ys = -5:1:5
 
     # Set a seed
-    Random.seed!(1)
+    Random.seed!(2)
 
     # Draw a state
     s = rand(Categorical([0.5, 0.5]))
@@ -256,16 +293,31 @@ function equilibrium(Σj, ρ=0.5, J = 200)
     x = rand(MvNormal(x_bar, Σx))
 
     # Generate signals
-    η = [rand(signal(f, Σj)) for _ in 1:J]
+    Σj = [rand_attention(n_assets, .1) for _ in 1:J]
+    η = [rand(signal(f, Σj[j])) for j in 1:J]
 
     # General inits
     ρ = 1
 
     # Make a grid
-    init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), vec(diagm(ones(n_assets))))
-    p = Iterators.product((-10:1:10 for _ in 1:length(init_θ))...)
+    function init_target(θ)
+        a,b,c = price_matrices(θ, n_assets)
+        p = a + b*f + c*x
+        return sum((p - f) .^ 2)
+    end
 
-    function target(θ)
+    init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), -vec(diagm(ones(n_assets))))
+    # init_θ = vcat(
+    #     true_s[1] .* μ1 + true_s[2] .* μ2,
+    #     vec(diagm([0.5, 0.5])),
+    #     vec(diagm([0.05, 0.05]))
+    # )
+
+    # init_θ = optimize(init_target, init_θ, iterations=10_000, autodiff = :forward)
+    # display(init_θ)
+    # init_θ = init_θ.minimizer
+
+    function target(θ; verbose=false)
         # Conjecture A, B, C matrices
         a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
@@ -275,51 +327,62 @@ function equilibrium(Σj, ρ=0.5, J = 200)
             total_q = zeros(n_assets)
             for j in 1:J
                 # Find the integral
-                zs = consumer_posterior(f, η[j], Σj, p, a, b, c, x_bar, Σx)
-                
+                zs = consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx)
                 q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                 total_q += q
             end
 
             norm_diff = sum((total_q - x).^2)
-            # param_norm = sum(θ.^2)
-            # println("Price conjecture $p")
-            # println("Payoffs          $f")
-            # println("Total q          $total_q")
-            # println("Total x          $x")
-            # println("Norm             $norm_diff")
-            # println("Param norm       $param_norm")
-            # println("a                $a")
-            # println("b                $b")
-            # println("c                $c")
-            # println("s                $s\n")
+            param_norm = sum(θ.^2) ./ 10
 
+            if verbose
+                println("\nTarget:")
+                println("\tPrice conjecture $p")
+                println("\tPayoffs          $f")
+                println("\tTotal q          $total_q")
+                println("\tTotal x          $x")
+                println("\tNorm             $norm_diff")
+                println("\tParam norm       $param_norm")
+                println("\ta                $a")
+                println("\tb                $b")
+                println("\tc                $c")
+                println("\ts                $s\n")
+            end
 
-
-            return norm_diff
+            return norm_diff #+ param_norm
         catch e
-            # rethrow(e)
+            if e isa InterruptException
+                rethrow(e)
+            end
+            rethrow(e)
             return Inf
         end
     end
 
-    best = nothing
-    best_val = Inf
-    # best = collect(first(p))
-    # best_val = target(best)
-    for thing in p
-        cthing = collect(thing)
-        val = target(cthing)
-        if val < best_val
-            println("theta: $cthing, value: $val")
-            best = cthing
-            best_val = val
-        end
+    function g!(G, θ)
+        G[:] = ForwardDiff.gradient(target, θ)
     end
 
-    # res = optimize(target, init_θ, SimulatedAnnealing(), Optim.Options(iterations=10000000))
+    # Call it
+    # target(init_θ, verbose=true)
+    # nltarget(init_θ)
 
-    return best, best_val
+    # Using Optim.jl
+    res = optimize(
+        target,
+        # g!,
+        init_θ, #randn(length(init_θ)),
+        # LBFGS(linesearch = BackTracking(order=2)),
+        # autodiff=:forwarddiff,
+        Optim.Options(iterations=10_000)
+    )
+    target(res.minimizer, verbose=true)
+    return res
+
+    # Using NLSolve.jl
+    # res = nlsolve(target, init_θ, autodiff=:forward, iterations=10_000)
+    # target(res.zero, verbose=true)
+    # return res
 end
 
-v = equilibrium([1.0 0.0; 0.0 0.5])
+v = equilibrium()
