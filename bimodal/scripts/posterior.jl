@@ -15,7 +15,7 @@ true_s = [0.5, 0.5]
 μ2 = [-1.0, -1.0]
 
 Σ1 = [1.0 0; 0 1.0]
-Σ2 = [1.0 0; 0 1.0] .* 2
+Σ2 = [1.0 0; 0 1.0] .* 1
 # Σ1 = [2.0 0; 0. 1.0]
 # Σ2 = [1.0 0; 0 2.0]
 Σj = [1 0.0; 0.0 1.0] .* 5
@@ -141,14 +141,9 @@ end
 # plot_post([0, 0], diagm([1,10]))
 # plot_post([0, 0], diagm([1,1]))
 
-# Utility
-function utility(f, p, q; r=1.0, W0 = 1.0, ρ = 1)
-    Wj = r*W0 + q'(f - p .*r)
-    return exp(-ρ * Wj)
-end
 
 # Individual posterior
-function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=true, plotting=true)
+function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=false, plotting=false, person=0)
     # First posterior
     S_11 = Σ1
     S_12 = [B*Σ1 Σ1]
@@ -212,7 +207,7 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=true
 
         # Plotting variables
         bounds = -5:0.1:5
-        
+
         # Contour values
         z_prior = [pdf(prior, [x,y]) for x in bounds, y in bounds]
         z_post = [pdf(posterior, [x,y]) for x in bounds, y in bounds]
@@ -227,9 +222,10 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=true
             scatter!(subplot, [(η[2], η[1])], label="Personal signal", legend=false)
         end
 
-        plot(plot1, plot2) |> display
-        sleep(0.1)
-
+        pl = plot(plot1, plot2, dpi=180)
+        !ispath("plots/individuals/") && mkpath("plots/individuals/")
+        savefig("plots/individuals/$person.png")
+        # sleep(0.1)
     end
 
     return (s_hat=s_hat, μ1=μ_hat_1, Σ1=Σ_hat_1, μ2=μ_hat_2, Σ2=Σ_hat_2)
@@ -258,6 +254,27 @@ function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
     return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l)
 end
 
+# One b for each person
+# function chop(body, amount)
+#     if length(body) == amount
+#         return [body]
+#     else
+#         return vcat([body[1:amount]], chop(body[amount+1:end], amount))
+#     end
+# end
+
+# function price_matrices(θ, n_assets, J)
+#     offset = n_assets^2
+#     a = reshape(θ[1:n_assets], n_assets)
+
+#     chopped = chop(θ[n_assets+1:end], offset)
+
+#     b = chopped[1:J]
+#     c = chopped[end]
+#     return a, b, c
+# end
+
+# Single B matrix
 function price_matrices(θ, n_assets)
     offset = n_assets^2
     a = reshape(θ[1:n_assets], n_assets)
@@ -273,11 +290,41 @@ function rand_attention(n_assets, K)
     return diagm([inv(γ[i] * K) for i in 1:n_assets])
 end
 
+# Utility
+function utility(f, p, q; r=1.0, W0 = 1.0, ρ = 1)
+    Wj = r*W0 + q'(f - p .*r)
+    return exp(-ρ * Wj)
+end
+
+function expected_utility(p, r, ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
+    q = qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
+    μs = s_hat.*μ_h + (1-s_hat).* μ_l
+    Σs = s_hat.*Σ_h + (1-s_hat).* Σ_l
+    return only(ρ .* q' * (μs) - ρ^2/2 .* q' * Σs * q .- ρ .* q'p .*r)
+end
+
+function investor_kl(zs)
+    s_hat, μ1_hat, Σ1_hat, μ2_hat, Σ2_hat = zs
+    
+    # Mixtures
+    prior = MixtureModel([g1, g2], true_s)
+    posterior = MixtureModel([
+        MvNormal(μ1_hat, Σ1_hat),
+        MvNormal(μ2_hat, Σ2_hat),
+    ], [s_hat, 1-s_hat])
+
+    # Approximate KL
+    rn = -5:0.01:5
+    return sum(pdf(prior, [x,y]) * (logpdf(prior, [x,y]) - logpdf(posterior, [x,y])) for x in rn, y in rn)
+end
+
 # The loop!
-function equilibrium(ρ=0.5, J = 15)
+function equilibrium(ρ=0.5, J = 2, K=100)
     # Setup
     xs = -5:1:5
     ys = -5:1:5
+    !ispath("results/individuals/") && mkpath("results/individuals/")
+
 
     # Set a seed
     Random.seed!(2)
@@ -286,18 +333,25 @@ function equilibrium(ρ=0.5, J = 15)
     s = rand(Categorical([0.5, 0.5]))
 
     # Draw payoffs
-    f = s == 1 ? rand(g1) : rand(g2)
+    # f = s == 1 ? rand(g1) : rand(g2)
+    f = [0,0]
     n_assets = length(f)
 
     # Calculate supply
     x = rand(MvNormal(x_bar, Σx))
 
     # Generate signals
-    Σj = [rand_attention(n_assets, .1) for _ in 1:J]
-    η = [rand(signal(f, Σj[j])) for j in 1:J]
+    # Σj = [rand_attention(n_assets, 1) for _ in 1:J]
+    Σj = [
+        diagm([inv(K*0.99), inv(K*0.01)]),
+        diagm([inv(K*0.01), inv(K*0.99)])
+    ]
+    # η = [rand(signal(f, Σj[j])) for j in 1:J]
+    η = [[0,0], [0,0]]
 
     # General inits
     ρ = 1
+    r = 1
 
     # Make a grid
     function init_target(θ)
@@ -317,19 +371,63 @@ function equilibrium(ρ=0.5, J = 15)
     # display(init_θ)
     # init_θ = init_θ.minimizer
 
-    function target(θ; verbose=false)
+    function target(θ; verbose=false, plotting=false, store=false)
         # Conjecture A, B, C matrices
         a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
 
         try
             # Calculate consumer posterior
+            u_sum = 0
             total_q = zeros(n_assets)
             for j in 1:J
                 # Find the integral
-                zs = consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx)
+                zs = consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx; person=j, plotting=plotting)
                 q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                 total_q += q
+
+                # Compute expected utility
+                uj = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                u_sum += uj
+
+                # Store results if we've got em'
+                if store
+                    mus = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
+                    open("results/individuals/$j.txt", write=true, create=true) do io
+                        println(io, "Person $j\n")
+                        println(io, "--------------------------------------------")
+                        println(io, "\nPosterior beliefs")
+                        println(io, "s_hat:              ", round.(zs.s_hat, digits=3))
+                        println(io, "mu:                 ", round.(mus, digits=3))
+                        println(io, "mu_1:               ", round.(zs.μ1, digits=3))
+                        println(io, "mu_2:               ", round.(zs.μ2, digits=3))
+                        println(io, "Sigma_1:            ", round.(zs.Σ1, digits=3))
+                        println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
+                        println(io, "forecast error:     ", round.(f - mus, digits=3))
+                        println(io, "forecast SSE:       ", sum((f - mus).^2))
+                        println(io, "KL:                 ", round(investor_kl(zs), digits=2))
+                        println(io)
+                        println(io, "\nUtility")
+                        println(io, "u_j:       ", round.(uj, digits=3))
+                        println(io)
+                        println(io, "\nAttention")
+                        println(io, "signal:    ", round.(η[j], digits=3))
+                        println(io, "attention: ", round.(Σj[j], digits=3))
+                        println(io)
+                        println(io, "\nGround truth")
+                        println(io, "payoffs:   ", round.(f, digits=3))
+                        println(io, "state:     ", s)
+                        println(io, "mu:        ", round.(true_s[1] * μ1 + (1-true_s[1]) * μ2, digits=3))
+                        println(io, "mu1:       ", round.(μ1, digits=3))
+                        println(io, "mu2:       ", round.(μ2, digits=3))
+                        println(io, "Sigma1:    ", round.(Σ1, digits=3))
+                        println(io, "Sigma2:    ", round.(Σ2, digits=3))
+                        # println(io, "mu_1:               ", round.(zs.μ1, digits=3))
+                        # println(io, "mu_2:               ", round.(zs.μ2, digits=3))
+                        # println(io, "Sigma_1:            ", round.(zs.Σ1, digits=3))
+                        # println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
+                    end
+                end
             end
 
             norm_diff = sum((total_q - x).^2)
@@ -351,11 +449,11 @@ function equilibrium(ρ=0.5, J = 15)
 
             return norm_diff #+ param_norm
         catch e
-            if e isa InterruptException
-                rethrow(e)
+            if e isa PosDefException
+                return Inf
             end
+
             rethrow(e)
-            return Inf
         end
     end
 
@@ -376,7 +474,7 @@ function equilibrium(ρ=0.5, J = 15)
         # autodiff=:forwarddiff,
         Optim.Options(iterations=10_000)
     )
-    target(res.minimizer, verbose=true)
+    target(res.minimizer, verbose=true, plotting=true, store=true)
     return res
 
     # Using NLSolve.jl
