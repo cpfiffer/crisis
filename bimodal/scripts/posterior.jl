@@ -8,11 +8,12 @@ using HCubature
 using Random
 using ForwardDiff
 using NLsolve
+using DataFrames
 
 # true_s = [1.0, 0.0] # Degenerate
 true_s = [0.5, 0.5]
-μ1 = [1.0, 1.0]
-μ2 = [-1.0, -1.0]
+μ1 = [1.0, 2.0]
+μ2 = [1.0, -2.0]
 
 Σ1 = [1.0 0; 0 1.0]
 Σ2 = [1.0 0; 0 1.0] .* 1
@@ -293,19 +294,29 @@ end
 # Utility
 function utility(f, p, q; r=1.0, W0 = 1.0, ρ = 1)
     Wj = r*W0 + q'(f - p .*r)
-    return exp(-ρ * Wj)
+    return -exp(-ρ * Wj)
 end
 
 function expected_utility(p, r, ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
     q = qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
     μs = s_hat.*μ_h + (1-s_hat).* μ_l
     Σs = s_hat.*Σ_h + (1-s_hat).* Σ_l
-    return only(ρ .* q' * (μs) - ρ^2/2 .* q' * Σs * q .- ρ .* q'p .*r)
+
+    payoff_good = -exp(-ρ * q' * (μ_h - p .* r) + only(ρ^2/2 * q'Σ_h*q))
+    payoff_bad = -exp(-ρ * q' * (μ_l - p .* r) + only(ρ^2/2 * q'Σ_l*q))
+    exp_util = s_hat * payoff_good + (1-s_hat) * payoff_bad
+
+    t1 = only(ρ .* q' * (μs))
+    t2 = -only(ρ^2/2 .* q' * Σs * q)
+    t3 = -only(ρ .* q' * p .* r)
+    return (uj=t1 + t2 + t3, u_ret=t1, u_var=t2, u_price=t3,
+            good=payoff_good, bad=payoff_bad, exp_uj=exp_util)
 end
 
 function investor_kl(zs)
+    return missing
     s_hat, μ1_hat, Σ1_hat, μ2_hat, Σ2_hat = zs
-    
+
     # Mixtures
     prior = MixtureModel([g1, g2], true_s)
     posterior = MixtureModel([
@@ -319,7 +330,7 @@ function investor_kl(zs)
 end
 
 # The loop!
-function equilibrium(ρ=0.5, J = 2, K=100)
+function equilibrium(ρ=0.5, J = 5_000, K=1)
     # Setup
     xs = -5:1:5
     ys = -5:1:5
@@ -333,8 +344,8 @@ function equilibrium(ρ=0.5, J = 2, K=100)
     s = rand(Categorical([0.5, 0.5]))
 
     # Draw payoffs
-    # f = s == 1 ? rand(g1) : rand(g2)
-    f = [0,0]
+    f = s == 1 ? rand(g1) : rand(g2)
+    # f = [0,0]
     n_assets = length(f)
 
     # Calculate supply
@@ -342,12 +353,18 @@ function equilibrium(ρ=0.5, J = 2, K=100)
 
     # Generate signals
     # Σj = [rand_attention(n_assets, 1) for _ in 1:J]
-    Σj = [
-        diagm([inv(K*0.99), inv(K*0.01)]),
-        diagm([inv(K*0.01), inv(K*0.99)])
-    ]
-    # η = [rand(signal(f, Σj[j])) for j in 1:J]
-    η = [[0,0], [0,0]]
+    # Σj = [
+    #     diagm([inv(K*0.99), inv(K*0.01)]),
+    #     diagm([inv(K*0.01), inv(K*0.99)])
+    # ]
+
+    divline = div(J, 2)
+    Σj = vcat(
+        repeat([diagm([inv(K*0.99), inv(K*0.01)])], divline),
+        repeat([diagm([inv(K*0.01), inv(K*0.99)])], J - divline),
+    )
+    η = [rand(signal(f, Σj[j])) for j in 1:J]
+    # η = [[0,0], [0,0]]
 
     # General inits
     ρ = 1
@@ -375,6 +392,7 @@ function equilibrium(ρ=0.5, J = 2, K=100)
         # Conjecture A, B, C matrices
         a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
+        res = store ? [] : missing
 
         try
             # Calculate consumer posterior
@@ -387,45 +405,88 @@ function equilibrium(ρ=0.5, J = 2, K=100)
                 total_q += q
 
                 # Compute expected utility
-                uj = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                uj, t1, t2, t3, good, bad, exp_util = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                 u_sum += uj
 
                 # Store results if we've got em'
                 if store
                     mus = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
-                    open("results/individuals/$j.txt", write=true, create=true) do io
-                        println(io, "Person $j\n")
-                        println(io, "--------------------------------------------")
-                        println(io, "\nPosterior beliefs")
-                        println(io, "s_hat:              ", round.(zs.s_hat, digits=3))
-                        println(io, "mu:                 ", round.(mus, digits=3))
-                        println(io, "mu_1:               ", round.(zs.μ1, digits=3))
-                        println(io, "mu_2:               ", round.(zs.μ2, digits=3))
-                        println(io, "Sigma_1:            ", round.(zs.Σ1, digits=3))
-                        println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
-                        println(io, "forecast error:     ", round.(f - mus, digits=3))
-                        println(io, "forecast SSE:       ", sum((f - mus).^2))
-                        println(io, "KL:                 ", round(investor_kl(zs), digits=2))
-                        println(io)
-                        println(io, "\nUtility")
-                        println(io, "u_j:       ", round.(uj, digits=3))
-                        println(io)
-                        println(io, "\nAttention")
-                        println(io, "signal:    ", round.(η[j], digits=3))
-                        println(io, "attention: ", round.(Σj[j], digits=3))
-                        println(io)
-                        println(io, "\nGround truth")
-                        println(io, "payoffs:   ", round.(f, digits=3))
-                        println(io, "state:     ", s)
-                        println(io, "mu:        ", round.(true_s[1] * μ1 + (1-true_s[1]) * μ2, digits=3))
-                        println(io, "mu1:       ", round.(μ1, digits=3))
-                        println(io, "mu2:       ", round.(μ2, digits=3))
-                        println(io, "Sigma1:    ", round.(Σ1, digits=3))
-                        println(io, "Sigma2:    ", round.(Σ2, digits=3))
-                        # println(io, "mu_1:               ", round.(zs.μ1, digits=3))
-                        # println(io, "mu_2:               ", round.(zs.μ2, digits=3))
-                        # println(io, "Sigma_1:            ", round.(zs.Σ1, digits=3))
-                        # println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
+                    expected_return = mus ./ p
+
+                    push!(res, (
+                        s_hat = zs.s_hat,
+                        mu = mus,
+                        mu_1 = zs.μ1,
+                        mu_2 = zs.μ2,
+                        Sigma_1 = zs.Σ1,
+                        Sigma_2 = zs.Σ2,
+                        forecast_error = f - mus,
+                        forecast_sse = sum((f - mus).^2),
+                        expected_return = expected_return,
+                        quantity = q,
+                        utility = uj,
+                        utility_mean = t1,
+                        utility_var = t2,
+                        utility_price = t3,
+                        exp_utility = exp_util,
+                        good_utility = good,
+                        bad_utility = bad,
+                        signal = η[j],
+                        attn_mat = diag(Σj[j]),
+                        payoff = f,
+                        state = s,
+                        true_mu = true_s[1] * μ1 + (1-true_s[1]) * μ2,
+                        true_mu_1 = μ1,
+                        true_mu_2 = μ2,
+                        true_sigma_1 = Σ1,
+                        true_sigma_2 = Σ2,
+                        price = p,
+                        act_return = f ./ p,
+                        A = a,
+                        B = b,
+                        C = c,
+                        group = j <= divline ? "asset_1" : "asset_2",
+                    ))
+
+                    if j == 1 || j == divline+1
+                        open("results/individuals/$j.txt", write=true, create=true) do io
+                            println(io, "Person $j\n")
+                            println(io, "--------------------------------------------")
+                            println(io, "\nPosterior beliefs")
+                            println(io, "s_hat:              ", round.(zs.s_hat, digits=3))
+                            println(io, "mu:                 ", round.(mus, digits=3))
+                            println(io, "mu_1:               ", round.(zs.μ1, digits=3))
+                            println(io, "mu_2:               ", round.(zs.μ2, digits=3))
+                            println(io, "Sigma_1:            ", round.(zs.Σ1, digits=3))
+                            println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
+                            println(io, "forecast error:     ", round.(f - mus, digits=3))
+                            println(io, "forecast SSE:       ", sum((f - mus).^2))
+                            println(io, "KL:                 ", round(investor_kl(zs), digits=2))
+                            println(io, "E[r]:               ", round.(expected_return, digits=2))
+                            println(io)
+                            println(io, "\nQuantity")
+                            println(io, "q_j:       ", round.(q, digits=3))
+                            println(io)
+                            println(io, "\nUtility")
+                            println(io, "u_j:       ", round.(uj, digits=3))
+                            println(io)
+                            println(io, "\nAttention")
+                            println(io, "signal:    ", round.(η[j], digits=3))
+                            println(io, "attention: ", round.(Σj[j], digits=3))
+                            println(io)
+                            println(io, "\nGround truth")
+                            println(io, "payoffs:   ", round.(f, digits=3))
+                            println(io, "state:     ", s)
+                            println(io, "mu:        ", round.(true_s[1] * μ1 + (1-true_s[1]) * μ2, digits=3))
+                            println(io, "mu1:       ", round.(μ1, digits=3))
+                            println(io, "mu2:       ", round.(μ2, digits=3))
+                            println(io, "Signa1:    ", round.(Σ1, digits=3))
+                            println(io, "Price:     ", round.(p, digits=3))
+                            println(io, "Return:    ", round.(f ./ p, digits=3))
+                            println(io, "A:         ", round.(a, digits=3))
+                            println(io, "B:         ", round.(b, digits=3))
+                            println(io, "C:         ", round.(c, digits=3))
+                        end
                     end
                 end
             end
@@ -447,18 +508,20 @@ function equilibrium(ρ=0.5, J = 2, K=100)
                 println("\ts                $s\n")
             end
 
-            return norm_diff #+ param_norm
+            return norm_diff, res #+ param_norm
         catch e
             if e isa PosDefException
-                return Inf
+                return Inf, res
             end
 
             rethrow(e)
         end
     end
 
+    tt(z; kwargs...) = target(z; kwargs...)[1]
+
     function g!(G, θ)
-        G[:] = ForwardDiff.gradient(target, θ)
+        G[:] = ForwardDiff.gradient(tt, θ)
     end
 
     # Call it
@@ -467,15 +530,75 @@ function equilibrium(ρ=0.5, J = 2, K=100)
 
     # Using Optim.jl
     res = optimize(
-        target,
+        tt,
         # g!,
         init_θ, #randn(length(init_θ)),
         # LBFGS(linesearch = BackTracking(order=2)),
         # autodiff=:forwarddiff,
-        Optim.Options(iterations=10_000)
+        Optim.Options(iterations=100_000)
     )
-    target(res.minimizer, verbose=true, plotting=true, store=true)
-    return res
+    println("Solved!")
+    display(res)
+
+    actual = target(res.minimizer, verbose=true, plotting=false, store=true)
+    df = DataFrame(actual[2])
+
+    try
+        # Do economy plotting
+        !ispath("plots/economy/") && mkpath("plots/economy/")
+
+        # Plot s_hat
+        density(df.s_hat, group=df.group, title="Distribution of s_hat")
+        savefig("plots/economy/s_hat.png")
+
+        # Plot forecast errors
+        density(df.forecast_sse, group=df.group, title="Distribution of forecast SSE")
+        savefig("plots/economy/forecast_sse.png")
+
+        # Plot expected utility
+        density(df.utility, group=df.group, title="Distribution of E[uj]")
+        savefig("plots/economy/utility.png")
+
+        # Plot expected utility (term 1)
+        density(df.utility_mean, group=df.group, title="Distribution of E[uj], term 1")
+        savefig("plots/economy/utility-1.png")
+
+        # Plot expected utility (term 2)
+        density(df.utility_var, group=df.group, title="Distribution of E[uj], term 2")
+        savefig("plots/economy/utility-2.png")
+
+        # Plot expected utility (term 1)
+        density(df.utility_price, group=df.group, title="Distribution of E[uj], term 3")
+        savefig("plots/economy/utility-3.png")
+
+        # # Plot utility function
+        # density(df.exp_utility, group=df.group, title="Distribution of E[uj], exponential")
+        # savefig("plots/economy/utility-all.png")
+
+        # # Plot expected good utility
+        # density(df.good_utility, group=df.group, title="Distribution of E[uj], good state")
+        # savefig("plots/economy/utility-good.png")
+
+        # # Plot expected bad utility
+        # density(df.bad_utility, group=df.group, title="Distribution of E[uj], bad state")
+        # savefig("plots/economy/utility-bad.png")
+
+        # Plot expected returns
+        scatter(map(z -> tuple(z...), df.expected_return), group=df.group, title="Distribution of expected returns")
+        scatter!([tuple(df.act_return[1]...)])
+        savefig("plots/economy/expected_returns.png")
+
+        # Plot expected returns
+        scatter(map(z -> tuple(z...), df.quantity), group=df.group, title="Distribution of quantity")
+        savefig("plots/economy/quantity.png")
+
+        # Plot ex-post mus
+        scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat")
+        savefig("plots/economy/mu_hat.png")
+    finally
+        return res, df
+    end
+    # return res
 
     # Using NLSolve.jl
     # res = nlsolve(target, init_θ, autodiff=:forward, iterations=10_000)
@@ -483,4 +606,5 @@ function equilibrium(ρ=0.5, J = 2, K=100)
     # return res
 end
 
-v = equilibrium()
+v = equilibrium();
+println()
