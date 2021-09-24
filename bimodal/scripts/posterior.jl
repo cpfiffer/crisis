@@ -330,15 +330,12 @@ function investor_kl(zs)
 end
 
 # The loop!
-function equilibrium(ρ=0.5, J = 5_000, K=1)
+function equilibrium(ρ=1, J = 2, K=1)
     # Setup
-    xs = -5:1:5
-    ys = -5:1:5
     !ispath("results/individuals/") && mkpath("results/individuals/")
 
-
     # Set a seed
-    Random.seed!(2)
+    Random.seed!(1)
 
     # Draw a state
     s = rand(Categorical([0.5, 0.5]))
@@ -377,18 +374,18 @@ function equilibrium(ρ=0.5, J = 5_000, K=1)
         return sum((p - f) .^ 2)
     end
 
-    init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), -vec(diagm(ones(n_assets))))
-    # init_θ = vcat(
-    #     true_s[1] .* μ1 + true_s[2] .* μ2,
-    #     vec(diagm([0.5, 0.5])),
-    #     vec(diagm([0.05, 0.05]))
-    # )
+    # init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), -vec(diagm(ones(n_assets))))
+    init_θ = vcat(
+        true_s[1] .* μ1 + true_s[2] .* μ2,
+        vec(diagm([0.5, 0.5])),
+        vec(diagm([0.05, 0.05]))
+    )
 
     # init_θ = optimize(init_target, init_θ, iterations=10_000, autodiff = :forward)
     # display(init_θ)
     # init_θ = init_θ.minimizer
 
-    function target(θ; verbose=false, plotting=false, store=false)
+    function target(θ; verbose=true, plotting=false, store=false)
         # Conjecture A, B, C matrices
         a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
@@ -400,16 +397,20 @@ function equilibrium(ρ=0.5, J = 5_000, K=1)
             total_q = zeros(n_assets)
             for j in 1:J
                 # Find the integral
-                zs = consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx; person=j, plotting=plotting)
+                zs = if j == 1 || j == divline+1
+                    consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx; person=j, plotting=plotting)
+                else
+                    consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx; person=j, plotting=false)
+                end
                 q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                 total_q += q
 
-                # Compute expected utility
-                uj, t1, t2, t3, good, bad, exp_util = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
-                u_sum += uj
-
                 # Store results if we've got em'
                 if store
+                    # Compute expected utility
+                    uj, t1, t2, t3, good, bad, exp_util = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                    u_sum += uj
+
                     mus = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
                     expected_return = mus ./ p
 
@@ -445,7 +446,7 @@ function equilibrium(ρ=0.5, J = 5_000, K=1)
                         A = a,
                         B = b,
                         C = c,
-                        group = j <= divline ? "asset_1" : "asset_2",
+                        group = j <= divline ? "attn_asset_1" : "attn_asset_2",
                     ))
 
                     if j == 1 || j == divline+1
@@ -540,7 +541,7 @@ function equilibrium(ρ=0.5, J = 5_000, K=1)
     println("Solved!")
     display(res)
 
-    actual = target(res.minimizer, verbose=true, plotting=false, store=true)
+    actual = target(res.minimizer, verbose=true, plotting=true, store=true)
     df = DataFrame(actual[2])
 
     try
@@ -584,12 +585,18 @@ function equilibrium(ρ=0.5, J = 5_000, K=1)
         # savefig("plots/economy/utility-bad.png")
 
         # Plot expected returns
-        scatter(map(z -> tuple(z...), df.expected_return), group=df.group, title="Distribution of expected returns")
+        plot(
+            density(map(z -> z[1], df.expected_return), group=df.group, title="Distribution of expected returns (A1)"),
+            density(map(z -> z[2], df.expected_return), group=df.group, title="Distribution of expected returns (A2)"),
+        )
         scatter!([tuple(df.act_return[1]...)])
         savefig("plots/economy/expected_returns.png")
 
-        # Plot expected returns
-        scatter(map(z -> tuple(z...), df.quantity), group=df.group, title="Distribution of quantity")
+        # Plot quantity
+        plot(
+            density(map(z -> z[1], df.quantity), group=df.group, title="Distribution of quantity (A1)"),
+            density(map(z -> z[2], df.quantity), group=df.group, title="Distribution of quantity (A2)"),
+        )
         savefig("plots/economy/quantity.png")
 
         # Plot ex-post mus

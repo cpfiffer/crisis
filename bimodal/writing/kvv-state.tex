@@ -190,7 +190,7 @@ Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mi
     \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
 \end{figure}
 
-As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting. Namely, the distribution of $f$ is non-Gaussian. Non-Gaussian payoffs invalidate the Taylor expansion of the utility function that is commonly employed to simplify the investment decision.
+As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting. Namely, the distribution of $f$ is non-Gaussian. Fortunately, the Gaussian mixture distribution I pay off benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results thus benefit from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
 
 The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1]$). Investors have exponential preferences on final-period wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utilityat time 2 (after receiving private signals) is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
 
@@ -370,14 +370,14 @@ Note that the attention covariance matrix $\Sigma_\eta$ appears in the posterior
     \centering
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[0.1, 10.0].png}
+        \includegraphics[width=\textwidth]{../plots/posterior/[1, 10].png}
         \caption{$\bar K_1 = 0.1, \bar K_2 = 10$}
         \label{fig:unimode}
     \end{subfigure}
     \hfill
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[10.0, 0.1].png}
+        \includegraphics[width=\textwidth]{../plots/posterior/[10, 1].png}
         \caption{$\bar K_1 = 10, \bar K_2 = 0.1$}
         \label{fig:bimode}
     \end{subfigure}
