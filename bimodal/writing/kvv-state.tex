@@ -275,7 +275,46 @@ I conjecture and verify that the pricing function follows the form
     }
 \end{align*}
 
-\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator, meaning that each individual term has a closed-form expression.
+\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator. To identify these posteriors, it is useful to note that the three variables of interest to investor $j$, $m_j = [f, p, \eta_j]' \mid s$, is Normal. Prices conditional on $s$ are the sum of two Gaussians (payoff shocks $z$ and supply shocks $x$). 
+
+The mean of $m_j \mid s$ is
+
+$$
+E[m_j \mid s] = [\mu_s, A + B\mu_s + C \bar x, \mu_s]
+$$
+
+\noindent with the block variance matrix
+
+$$
+\Var[m_j \mid s] = \begin{bmatrix}
+    \Sigma_s & B \Sigma_s & \Sigma_s \\
+    B \Sigma_s & B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
+    \Sigma_s & B \Sigma_s & \Sigma_s + \Sigma_j
+\end{bmatrix}
+$$
+
+The posterior density of interest, $P(f \mid p, \eta_j, s)$, is well-defined by the rules of the multivariate Gaussian. Both the joint, prior, and posterior are all Gaussian. 
+
+To derive the posterior mean and variance, denote the aggregate signal held by investor $j$ as $y_j = [p, \eta_j]'$ and the corresponding state mean of that signal $\bar y_{j,s} = [A + B \mu_s + C \bar x, \mu_s]'$. Then the mean $\hat \mu_{j,s}$ and variance $\hat \Sigma_{j,s}$ of this posterior density are given by the identities
+
+\begin{align*}
+    \hat \Sigma_{j,s} &= \Sigma_s - \Omega_{1,2} \Omega_{2,2,j}^{-1} \Omega_{2,1} \\ 
+    \hat \mu_{j,s} &= \mu_s + \Omega_{1,2} \Omega_{2,2,j}^{-1} (y_j - \bar y_{j,s})
+\end{align*}
+
+\noindent where $\Omega_{1,2}$, $\Omega_{2,1}$, and $\Omega_{2,2}$ are block matrices formed from the partition of $\Var[m_j \mid s]$:
+
+\begin{align*}
+    \Omega_{1,2} &= \Omega_{2,1}' = \begin{bmatrix}
+        B \Sigma_s & \Sigma_s
+    \end{bmatrix} \\
+    \Omega_{2,2,j} &= \begin{bmatrix}
+        B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
+        B \Sigma_s & \Sigma_s + \Sigma_j
+    \end{bmatrix}
+\end{align*}
+
+
 
 \todo{Derive the joint density of prices}
 

@@ -252,9 +252,9 @@ end
 #     return -ρ .* sb * (I + 1/ρ^2 * inv(Σx) * Ση_bar)
 # end
 
-function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
-    return 1/ρ * inv(true_s[1] .* Σ_h + (1 - true_s[1]) .* Σ_l) * (true_s[1] .* μ_h + (1-true_s[1]) .* μ_l)
-    # return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l)
+function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l, p, r)
+    # return 1/ρ * inv(true_s[1] .* Σ_h + (1 - true_s[1]) .* Σ_l) * (true_s[1] .* μ_h + (1-true_s[1]) .* μ_l)
+    return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l - p .* r)
 end
 
 # One b for each person
@@ -300,13 +300,13 @@ function utility(f, p, q; r=1.0, W0 = 1.0, ρ = 1)
 end
 
 function expected_utility(p, r, ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
-    q = qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
+    q = qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l, p, r)
     μs = s_hat.*μ_h + (1-s_hat).* μ_l
     Σs = s_hat.*Σ_h + (1-s_hat).* Σ_l
 
-    payoff_good = -exp(-ρ * q' * (μ_h - p .* r) + only(ρ^2/2 * q'Σ_h*q))
-    payoff_bad = -exp(-ρ * q' * (μ_l - p .* r) + only(ρ^2/2 * q'Σ_l*q))
-    exp_util = s_hat * payoff_good + (1-s_hat) * payoff_bad
+    # payoff_good = -exp(-ρ * q' * (μ_h - p .* r) + only(ρ^2/2 * q'Σ_h*q))
+    # payoff_bad = -exp(-ρ * q' * (μ_l - p .* r) + only(ρ^2/2 * q'Σ_l*q))
+    # exp_util = s_hat * payoff_good + (1-s_hat) * payoff_bad
 
     t1 = only(ρ .* q' * (μs))
     t2 = -only(ρ^2/2 .* q' * Σs * q)
@@ -331,7 +331,7 @@ function investor_kl(zs)
 end
 
 # The loop!
-function equilibrium(ρ=1, J = 5000, K=0.1)
+function equilibrium(ρ=3, J = 5000, K=1.0)
     # Setup
     !ispath("results/individuals/") && mkpath("results/individuals/")
 
@@ -351,18 +351,14 @@ function equilibrium(ρ=1, J = 5000, K=0.1)
 
     # Generate signals
     # Σj = [rand_attention(n_assets, 1) for _ in 1:J]
-    # Σj = [
-    #     diagm([inv(K*0.99), inv(K*0.01)]),
-    #     diagm([inv(K*0.01), inv(K*0.99)])
-    # ]
 
+    # Two types
     divline = div(J, 2)
     Σj = vcat(
         repeat([diagm([inv(K*0.9), inv(K*0.1)])], divline),
         repeat([diagm([inv(K*0.1), inv(K*0.9)])], J - divline),
     )
     η = [rand(signal(f, Σj[j])) for j in 1:J]
-    # η = [[0,0], [0,0]]
 
     # General inits
     r = 1
@@ -404,7 +400,7 @@ function equilibrium(ρ=1, J = 5000, K=0.1)
                 else
                     consumer_posterior(f, η[j], Σj[j], p, a, b, c, x_bar, x, Σx; person=j, plotting=false)
                 end
-                q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
                 total_q += q
 
                 # Store results if we've got em'
@@ -534,9 +530,9 @@ function equilibrium(ρ=1, J = 5000, K=0.1)
         tt,
         # g!,
         init_θ, #randn(length(init_θ)),
-        Newton(linesearch = BackTracking(order=2)),
+        # Newton(linesearch = BackTracking(order=2)),
         # LBFGS(linesearch = BackTracking(order=2)),
-        autodiff=:forwarddiff,
+        # autodiff=:forwarddiff,
         Optim.Options(iterations=100_000)
     )
     println("Solved!")
