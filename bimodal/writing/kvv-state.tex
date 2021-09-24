@@ -256,113 +256,26 @@ Finally, markets must clear at price $p$ and quantities $q_j$, leading to the tr
 
 \end{definition}
 
-The history of the price function in noisy rational equilibrium models is an interesting one. Traditionally, generating the pricing function reduces to conjecturing that $p$ is Gaussian because it is a linear combination of Gaussians (payoffs $f$ and supply shocks $x$) as in \textcite{admati_noisy_1985}. Others have broadened the concept of the price as a distribution to allow for non-Gaussian payoffs such as \textcite{breon-drish_existence_2015}. \textcite{breon-drish_existence_2015} removed the limitation with non-Gaussian payoffs as long as the density is in the exponential family of distributions. 
+Prices carrying informational content is a long-standing proposition in noisy rational expectations models like \textcite{grossman_efficiency_1976}, \textcite{admati_noisy_1985}, and others. The often-conjectured linear price function in noisy rational expectations models are interperetable as Gaussian signals around the true payoffs with noise due to uncertain asset supply. Fortunately, my model permits the use of a linear pricing function and the corresponding Gaussian signal as long as rational expectations hold -- equilibrium prices must be a function of the true payoffs $f$. 
 
-I seek to describe the properties of the joint density $P(p, z, x, s, \eta_j)$ so as to reduce the problem of finding a price that rationalizes a NREE. I conjecture that the price function $p$ is additive in functions on the payoff and state variables ($\psi(f, s)$) and in the supply shocks ($\phi(x)$).
-
-\begin{align}
-    p(s,f,x) = A + \psi(f, s) + C x
-\end{align}
-
-\noindent for $n \times 1$ vectors $A$ and $\psi(f,s)$. I conjecture that $p$ is strictly a linear function in $x$, since $x$ is Gaussian. The most complex portion of the pricing function is $\psi(f, s)$, which has been linear in $z$ in prior works\footnote{\textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016} use a price function $p = A + B z + C x$. $A$, $B$, and $C$ generally assumed to be functions of known quantities about the payoff distribution, attention allocation, and risk tolerance.}. Unfortunately, payoffs in my model to not permit a linear function in payoff shocks $z$ and state $s$, so I cannot default to using the well-known solutions to the classic case without some modification.
-
-I conjecture that the form of $\psi(f, s)$ is a piecewise function in $s$, such that $E[\psi(f, s) \mid s] = B_s \mu_s$ for $s \in \{H, L\}$.
-
-$$
-\psi(f, s) = \begin{cases}
-    B_H f & \text{ if } s=H \\
-    B_L f & \text{ if } s=L
-\end{cases}
-$$
-
-\noindent The conjectured form of $\psi(f, s)$ is advantageous. Since the only nonlinearity in $p$ is due to $s$, the conditional distribution $p \mid s$ is Gaussian, leading to explicit closed-form solutions for various quantities of interest. The conditional Gaussian form of $p$ suggests that the matrices $A$, $B_H$, $B_L$, and $C$ will be similar to the fixed matrices of \textcite{kacperczyk_rational_2016}.
-
-Unconditional expectations of $p$ are easy to construct, since the state space of $s$ is finite and mutually exclusive:
+I conjecture and verify that the pricing function follows the form
 
 \begin{align}
-    E[p(f, s, x)] &= A + E[\psi(f,s)] \nonumber\\
-    &= A + P(s=H) E[\psi(f,s) \mid s = H] \nonumber\\
-    &\qquad\, + P(s=L) E[\psi(f,s) \mid s = L] \nonumber\\
-    &= A + \pi B_H \mu_H + (1-\pi) B_L \mu_L
+    p = A + B f + C x
 \end{align}
 
-\noindent Since $E[\psi(f,s) \mid s]=0$ by the distribution of $z \mid s$. The variance of prices is similarly easy to calculate.
-
-\begin{align}
-    \Var[p(f, s, x)] &= \Var[\psi(f, s)] + \Var[C x] \\
-                     &= \pi  B_H \bigg(\Sigma_H + (\mu_H - \overline{\mu})(\mu_H - \overline{\mu})' \bigg) B_H' \\
-                     &\quad+ (1-\pi) B_L \bigg(\Sigma_L + (\mu_L - \overline{\mu})(\mu_L - \overline{\mu})' \bigg) B_L' \\
-                     &\quad+ C \Sigma_x C'
-\end{align}
-
-Note that the ex-ante variance of prices is strictly higher when the state is non-degenerate ($\pi \notin \{0, 1\}$) because of state uncertainty in $\pi$.
-
-\subsection{The price signal}
-
-Prices carry informational content is a long-standing finding in noisy rational expectations models like \textcite{admati_noisy_1985} and others. My setting requires a modification from the traditional price density, which is linear in payoff and supply shocks $z$ and $x$. The traditional density simply does not apply in my setting the conditional expectations of prices are non-Gaussian. Investors perceive prices as stochastic quantities that reveal information about other stochastic variables (state and payoffs), but this perception requires deriving the distribution that prices are drawn from.
-
-The goal of this section is to find the joint density of prices $p$, payoff shocks $z$, states $s$, supply shocks $x$, and private signals $\eta_j$. Denote the (infinite) vector of observed signals $\eta = \{\eta_1, \eta_2, \dots, \eta_J\}$.
-
-First, however, the density of prices must be defined. As in other works, I aggregate all signals distributed to investors on the unit interval, yielding the market signal $\eta$:
-
-$$
-\eta = \int_0^1 \eta_j dj = E[\eta_j] = f
-$$
-
-\noindent $\eta$ represents the aggregation of investors' private signals, but it is still noisy. The market signal $\eta$ does not clarify exactly the state of the economy. The average variance of this signal is given by
-
-$$
-\Var[\eta] = \int_0^1 \Sigma_j dj = \Sigma_\eta
-$$
-
-\noindent where $\Sigma_\eta$ is a diagonal matrix with the $i$th diagonals $\int_0^1 K^{-1}_{ij} dj$ -- these are the average attention allocation across investors. $\eta$ is now Gaussian:
-
-$$
-\eta \sim \Gauss(f, \Sigma_\eta)
-$$
-
-From the market's perspective, the underlying state $s$ is still not known since the signal $\eta$ is stochastic. The posterior distribution of the payoffs $f$ conditional on observing the aggregate signal $\eta$ is then
+\noindent The linear form of $p$ is Gaussian, conditional on $f$, so the closed-form posterior for an investor $j$ is well-defined:
 
 \begin{align*}
-    P(f \mid \eta) &= P(s=H\mid f) P(f \mid s=H, \eta) + P(s=L\mid f) P(f \mid s=L, \eta) \\
+    P(f \mid \eta_j, p) &= \frac{P(\eta_j, p \mid f) P(f)}{P(\eta_j, p)} \\
+    &= \frac{P(\eta_j, p \mid f, s_H) P(f \mid s_H)P(s_H) + P(\eta_j, p \mid f, s_L) P(f \mid s_L)P(s_L)}{
+        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)}\\
+    &= \frac{\pi P(\eta_j, p \mid f, s_H) P(f \mid s_H) + (1-\pi)P(\eta_j, p \mid f, s_L) P(f \mid s_L)}{
+        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)
+    }
 \end{align*}
 
-\noindent The posterior distribution $f \mid s, \eta$ is simple enough to calculate, since $f$ and $\eta$ are jointly Gaussian when conditioned on $s$. The posterior $f \mid s, \eta$ is written
-
-$$
-f \mid s, \eta \sim \Gauss(\hat \mu_s, \hat \Sigma_s)
-$$
-
-\noindent where 
-
-\begin{align*}
-    \hat \mu_s &= 
-        \mu_s + \Sigma_s(\Sigma_s + \Sigma_\eta)^{-1} (\eta - \mu_s) \\
-    \hat \Sigma_s &= 
-        \Sigma_s + \Sigma_s(\Sigma_s + \Sigma_\eta)^{-1} \Sigma_s
-\end{align*}
-
-Next, I calculate the posterior probability of each state $s \mid \eta$, given by Baye's rule:
-
-$$
-P(s \mid \eta) = \frac{P(\eta \mid s) P(s)}{
-    P(\eta \mid s=H)P(s=H) + P(\eta \mid s=L)P(s=L)
-}
-$$
-
-where 
-
-$$
-\eta \mid s \sim \Gauss(\mu_s, \Sigma_s + \Sigma_\eta)
-$$
-
-\noindent As there are only two states, it is sometimes convenient to refer to the relative probabilities of $P(s=H\mid \eta)$ and $P(s=L \mid \eta)$ in terms of their odds ratio
-
-$$
-\mathcal{C}(s=H) = \frac{P(s=H \mid \eta)}{P(s=L \mid \eta)}
-$$
-
-Note that the attention covariance matrix $\Sigma_\eta$ appears in the posteriors for the payoff density $f$ and the state density $s$. Allocating more attention to certain assets allow the price density to more completely identify the payoff state. Figure \ref{fig:swapped} demonstrates that high levels of attention to one asset or another can yield remarkably different posterior modes, which suggests that aggregate attention can cause prices to push investors towards one mode or the other.
+\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator, meaning that each individual term has a closed-form expression.
 
 \todo{Derive the joint density of prices}
 

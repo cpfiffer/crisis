@@ -204,7 +204,8 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x_bar, x, Σ_x; verbose=fals
     if plotting
         # Mixtures
         prior = MixtureModel([g1, g2], true_s)
-        posterior = MixtureModel([post1, post2], [s_hat, 1-s_hat])
+        # posterior = MixtureModel([post1, post2], [s_hat, 1-s_hat])
+        posterior = MixtureModel([post1, post2], true_s)
 
         # Plotting variables
         bounds = -5:0.1:5
@@ -252,7 +253,8 @@ end
 # end
 
 function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
-    return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l)
+    return 1/ρ * inv(true_s[1] .* Σ_h + (1 - true_s[1]) .* Σ_l) * (true_s[1] .* μ_h + (1-true_s[1]) .* μ_l)
+    # return 1/ρ * inv(s_hat .* Σ_h + (1 - s_hat) .* Σ_l) * (s_hat .* μ_h + (1-s_hat) .* μ_l)
 end
 
 # One b for each person
@@ -309,8 +311,7 @@ function expected_utility(p, r, ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
     t1 = only(ρ .* q' * (μs))
     t2 = -only(ρ^2/2 .* q' * Σs * q)
     t3 = -only(ρ .* q' * p .* r)
-    return (uj=t1 + t2 + t3, u_ret=t1, u_var=t2, u_price=t3,
-            good=payoff_good, bad=payoff_bad, exp_uj=exp_util)
+    return (uj=t1 + t2 + t3, u_ret=t1, u_var=t2, u_price=t3)
 end
 
 function investor_kl(zs)
@@ -330,7 +331,7 @@ function investor_kl(zs)
 end
 
 # The loop!
-function equilibrium(ρ=1, J = 2, K=1)
+function equilibrium(ρ=1, J = 5000, K=0.1)
     # Setup
     !ispath("results/individuals/") && mkpath("results/individuals/")
 
@@ -357,14 +358,13 @@ function equilibrium(ρ=1, J = 2, K=1)
 
     divline = div(J, 2)
     Σj = vcat(
-        repeat([diagm([inv(K*0.99), inv(K*0.01)])], divline),
-        repeat([diagm([inv(K*0.01), inv(K*0.99)])], J - divline),
+        repeat([diagm([inv(K*0.9), inv(K*0.1)])], divline),
+        repeat([diagm([inv(K*0.1), inv(K*0.9)])], J - divline),
     )
     η = [rand(signal(f, Σj[j])) for j in 1:J]
     # η = [[0,0], [0,0]]
 
     # General inits
-    ρ = 1
     r = 1
 
     # Make a grid
@@ -374,12 +374,14 @@ function equilibrium(ρ=1, J = 2, K=1)
         return sum((p - f) .^ 2)
     end
 
-    # init_θ = vcat(ones(n_assets) , vec(diagm(ones(n_assets))), -vec(diagm(ones(n_assets))))
     init_θ = vcat(
-        true_s[1] .* μ1 + true_s[2] .* μ2,
-        vec(diagm([0.5, 0.5])),
-        vec(diagm([0.05, 0.05]))
-    )
+        zeros(n_assets) , 
+        -vec(inv(diagm(f))), -vec(diagm(ones(n_assets))))
+    # init_θ = vcat(
+    #     true_s[1] .* μ1 + true_s[2] .* μ2,
+    #     vec(diagm([0.5, 0.5])),
+    #     vec(diagm([0.05, 0.05]))
+    # )
 
     # init_θ = optimize(init_target, init_θ, iterations=10_000, autodiff = :forward)
     # display(init_θ)
@@ -408,7 +410,7 @@ function equilibrium(ρ=1, J = 2, K=1)
                 # Store results if we've got em'
                 if store
                     # Compute expected utility
-                    uj, t1, t2, t3, good, bad, exp_util = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
+                    uj, t1, t2, t3 = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                     u_sum += uj
 
                     mus = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
@@ -429,9 +431,6 @@ function equilibrium(ρ=1, J = 2, K=1)
                         utility_mean = t1,
                         utility_var = t2,
                         utility_price = t3,
-                        exp_utility = exp_util,
-                        good_utility = good,
-                        bad_utility = bad,
                         signal = η[j],
                         attn_mat = diag(Σj[j]),
                         payoff = f,
@@ -512,6 +511,7 @@ function equilibrium(ρ=1, J = 2, K=1)
             return norm_diff, res #+ param_norm
         catch e
             if e isa PosDefException
+                println("Postive definite exception")
                 return Inf, res
             end
 
@@ -534,8 +534,9 @@ function equilibrium(ρ=1, J = 2, K=1)
         tt,
         # g!,
         init_θ, #randn(length(init_θ)),
+        Newton(linesearch = BackTracking(order=2)),
         # LBFGS(linesearch = BackTracking(order=2)),
-        # autodiff=:forwarddiff,
+        autodiff=:forwarddiff,
         Optim.Options(iterations=100_000)
     )
     println("Solved!")
