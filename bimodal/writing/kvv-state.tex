@@ -47,6 +47,240 @@ url=false]{biblatex}
 \newtheorem{definition}{Definition}
 
 
+\newpage
+
+\maketitle
+
+\section{Introduction}
+
+A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. Signals usuall\footnote{A noteworthy exception is \textcite{breon-drish_existence_2015}, which allows signals and payoff distributions to vary to a greater degree -- namely, that the density of the payoff conditional on a private signal ($P(\tilde f \mid \eta_j)$, in terms of \textcite{kacperczyk_rational_2016}) be a member of the exponential family of distributions.} take the form of the true payoff with additive Gaussian nois, $\eta_j = \tilde f + \epsilon_j$, for investor $j$, signal $\eta_j$, payoff vector $\tilde f$, and noise term $\epsilon_j$. 
+
+I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
+
+\todo{lit review here}
+
+\section{Model framework}
+
+Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016},  which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
+
+The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
+
+I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with an arbitrary factor structure given by principal components. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
+
+$$
+P(s) = \begin{cases}
+    \pi & \text{ if } s = H \\
+    1-\pi & \text{ if } s = L \\
+\end{cases}
+$$
+
+The good and bad states dictate the mean and covariance of asset payoffs. Payoffs of the $n$ assets, denoted by $n\times 1$ vector $f$, are written
+
+\begin{align}
+    f_i &= \mu_{i,s} + z_i\\
+    z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s) \\
+    f &\mid s \sim \Gauss(\mu_{s}, \Sigma_s)
+\end{align}
+
+The mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.\footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
+
+\begin{align}
+    \tilde f \mid s \sim \Gauss(\Gamma_s^{-1} \mu_s, \Lambda_s)
+\end{align}
+
+\noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$ for some eigenvector matrix $\Gamma$. My model only permits the orthogonalization of the prior variance $\Sigma$, but in general the transforms on $\tilde q$ and $\tilde p$ will remain correlated conditional on state.
+
+
+}
+
+Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mixture distribution with mixture weights $\pi$ and $1-\pi$. The density function is written
+
+\begin{align}
+    P(f) \sim \pi \Gauss(f \mid \mu_H, \Sigma_H) + (1-\pi) \Gauss (f \mid \mu_L, \Sigma_L)
+\end{align}
+
+\noindent Gaussian mixture distributions have the conceptual benefit of moving payoffs outside the traditional exponential family of distributions. In principle, a mixture model can approximate any complex joint density as the number of components increase (\cite{nguyen_approximations_2019}). I maintain only two components as a proof-of-concept, though much of my analysis expands easily to an arbitrary number of Gaussian components. Additionally, many of the posterior distributions are only marginally more complex than when using traditional normal or log-normal distributions.
+
+\begin{figure}
+    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
+    \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
+\end{figure}
+
+As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting without minor modifications. Namely, the distribution of $f$ is unconditionally non-Gaussian. Fortunately, the Gaussian mixture distribution I pay off benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results thus benefit from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
+
+The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1]$). Investors have exponential preferences on final-period wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utility at time 2 (after receiving private signals) is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
+
+\begin{align}
+    U_{j2} = E_j[\exp{-\rho W_j}]
+\end{align}
+
+\noindent for law of motion on wealth $W_j = r W_0 + q'_j (f - pr)$. Since wealth effects do not enter the investment decision for CARA utilities, I follow  \textcite{kacperczyk_rational_2016} and equalize initial wealth to $W_0$ for all investors.
+
+A portion of investors (the \textit{informed}) receive private signals $\eta_j$ about time 3 payoffs $f$. Signals take the form of additive Gaussian noise around the true payoff, where the precision of the noise is determined by investor attention allocation. The form of a private signal is
+
+\begin{align}
+    \eta_j &\sim \Gauss(f, \Sigma_{\eta,j}), \\
+    \text{ or } \eta_j &= f + \epsilon_j, \quad \epsilon_j \sim \Gauss(0, \Sigma_{\eta_j})
+\end{align}
+
+\noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is the total amount of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply higher precision, and thus a more accurate signal of $f$.
+
+Investors have limited attention, in that they cannot pay attention to all the signals they would like. Concretely, this constraint is written
+
+\begin{align}
+    \sum_{i=1}^n K_{ij} \le K_j
+\end{align}
+
+\noindent though for simplicity I equalize attention constraints across investors to $K_j = K$ for informed investors and $K_j = 0$ for uninformed investors. Uninformed investors can only use prices as signals about payoffs, whereas informed investors can use both prices and private signals. The attention constraint utilized here is common in the information choice literature -- see \textcite{kacperczyk_rational_2016}.
+
+Investors have two optimization problems to make. First, if the investor is informed, they must allocate their attention across private signals at time 1. Second, conditional on any information observed in time 1, investors construct portfolios to optimize expected utility at time 2, $U_{j2}$.
+
+The investor's information choice problem is to maximize expected time-1 utility $U_{j1}$:
+
+\begin{maxi}
+    {K_{ij}}{U_{j1} = E\bigg[ E_j[\exp{-\rho W_j}]\bigg]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+    \addConstraint{\sum_i K_{ij}}{ \le 1}
+    \addConstraint{K_{ij}}{\ge 0, \quad \forall i}
+\end{maxi}
+
+\noindent Next, the time-2 portfolio choice problem is to maximize expected utility $U_{j2}$:
+
+
+\begin{maxi}
+    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+\end{maxi}
+
+Finally, markets must clear at price $p$ and quantities $q_j$, leading to the traditional market clearing condition
+
+\begin{align}
+    \int_j{q_j(p)} = \overline x + x
+\end{align}
+
+\noindent Market clearing requires that quantities and prices be such that all supply is allocated to an investor. I now turn to the formal declaration of an equilibrium in my setting, as in \textcite{breon-drish_existence_2015}.
+
+\begin{definition}
+    A noisy rational expectations equilibrium (NREE) is a function $p(s, f, x)$ that maps the state $s$, payoffs $f$, and asset supply $x$ to a vector of prices for the $n$ assets, such that (a) prices maximize aggregate surplus:
+
+    \begin{align}
+        q_j(p, \eta_j) \in \arg\max_{q_j} E_j [\exp{-\rho W_j} \mid \eta_j, p], \quad \forall j \in [0,1]
+    \end{align}
+
+    \noindent that (b) markets clear, and (c) that all agents are optimizing conditional on their information set $\{p, \eta_j\}$.
+
+\end{definition}
+
+Prices providing information to invesotrs is a long-standing proposition with a strong theoretical background like \textcite{grossman_efficiency_1976}, \textcite{admati_noisy_1985}, and others. \hl{Empirical support for price informativeness is robust as well}\todo{CITES}. The often-conjectured linear price function in noisy rational expectations models are interperetable as Gaussian signals around the true payoffs with noise due to uncertain asset supply. Fortunately, my model permits the use of a linear pricing function and the corresponding Gaussian signal as long as rational expectations hold -- equilibrium prices must be a linear function of the true payoffs $f$. 
+
+I conjecture and verify that the pricing function follows the form
+
+\begin{align}
+    p = A + B f + C x
+\end{align}
+
+\noindent The linear form of $p$ is Gaussian conditional on $f$, so the closed-form posterior for an investor $j$ is well-defined:
+
+\begin{align*}
+    P(f \mid \eta_j, p) &= \frac{P(\eta_j, p \mid f) P(f)}{P(\eta_j, p)} \\
+    &= \frac{P(\eta_j, p \mid f, s_H) P(f \mid s_H)P(s_H) + P(\eta_j, p \mid f, s_L) P(f \mid s_L)P(s_L)}{
+        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)}\\
+    &= \frac{\pi P(\eta_j, p \mid f, s_H) P(f \mid s_H) + (1-\pi)P(\eta_j, p \mid f, s_L) P(f \mid s_L)}{
+        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)
+    }
+\end{align*}
+
+\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator. To identify these posteriors, it is useful to note that the three variables of interest to investor $j$, $m_j = [f, p, \eta_j]'$, is Normal when conditioned on the latent state $s$ since prices conditional on $s$ are the sum of two Gaussians (payoff shocks $z$ and supply shocks $x$). 
+
+The mean of the payoff, price, and signal vector $m_j \mid s$ is
+
+$$
+E[m_j \mid s] = [\mu_s, A + B\mu_s + C \bar x, \mu_s]
+$$
+
+\noindent with the block variance matrix
+
+$$
+\Var[m_j \mid s] = \begin{bmatrix}
+    \Sigma_s & B \Sigma_s & \Sigma_s \\
+    B \Sigma_s & B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
+    \Sigma_s & B \Sigma_s & \Sigma_s + \Sigma_j
+\end{bmatrix}
+$$
+
+The posterior density of interest, $P(f \mid p, \eta_j, s)$, is well-defined by the rules of the multivariate Gaussian. Both the joint, prior, and posterior are all Gaussian when conditioned on state $s$.
+
+To derive the posterior mean and variance, denote the aggregate signal held by investor $j$ as $y_j = [p, \eta_j]'$ and the corresponding state mean of that signal $\bar y_{j,s} = [A + B \mu_s + C \bar x, \mu_s]'$. Then the mean $\hat \mu_{j,s}$ and variance $\hat \Sigma_{j,s}$ of this posterior density are given by the identities
+
+\begin{align*}
+    \hat \Sigma_{j,s} &= \Sigma_s - \Omega_{1,2} \Omega_{2,2,j}^{-1} \Omega_{2,1} \\ 
+    \hat \mu_{j,s} &= \mu_s + \Omega_{1,2} \Omega_{2,2,j}^{-1} (y_j - \bar y_{j,s})
+\end{align*}
+
+\noindent where $\Omega_{1,2}$, $\Omega_{2,1}$, and $\Omega_{2,2}$ are block matrices formed from the partition of $\Var[m_j \mid s]$:
+
+\begin{align*}
+    \Omega_{1,2} &= \Omega_{2,1}' = \begin{bmatrix}
+        B \Sigma_s & \Sigma_s
+    \end{bmatrix} \\
+    \Omega_{2,2,j} &= \begin{bmatrix}
+        B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
+        B \Sigma_s & \Sigma_s + \Sigma_j
+    \end{bmatrix}
+\end{align*}
+
+
+
+\todo{Derive the joint density of prices}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../plots/posterior/[1, 10].png}
+        \caption{$\bar K_1 = 0.1, \bar K_2 = 10$}
+        \label{fig:unimode}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../plots/posterior/[10, 1].png}
+        \caption{$\bar K_1 = 10, \bar K_2 = 0.1$}
+        \label{fig:bimode}
+    \end{subfigure}
+    \caption{The posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate that the modal point varies dramatically with attention. State 2, the mode on the bottom of the figure, has twice the variance of state 1.}
+    \label{fig:swapped}
+\end{figure}
+
+
+\section{Equilibrium}
+
+\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using this solution to determine the optimal information choice. I defer to their solution, though with some added complexity due to the change in the densities of $f$, $s$, and $p$ from multivariate Gaussians to mixture distributed variables.
+
+\begin{maxi}
+    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+\end{maxi}
+
+\pagebreak
+\appendix
+
+\section{Mixture model variance}
+
+The variance-covariance matrix of variable $X$ following a Gaussian mixture distribution with means $\mu = [\mu_1, \mu_2, \dots, \mu_k]'$, covariances $\Sigma= [\Sigma_1, \Sigma_2, \dots, \Sigma_k]$, and mixture proportions $\pi = [\pi_1, \pi_2, \dots, \pi_k]'$ is\footnote{From https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures} 
+
+\begin{align}
+    \Var[X] &= E[\Var[X \mid k]] + \Var[E[X \mid k]] \\
+            &= \sum_k  \pi_k  \bigg(\Sigma_k + (\mu_k - \overline{\mu})(\mu_k - \overline{\mu})' \bigg)
+\end{align}
+
+\noindent for $\overline{\mu}=\sum_k \pi_k \mu_k$.
+
+\section{Misc identities}
+
 Stochastic variables:
 
 \begin{itemize}
@@ -131,236 +365,6 @@ Ex-ante expected utility:
         \biggr) \tilde q_j
 \end{align*}
 
-\newpage
-
-\maketitle
-
-\section{Introduction}
-
-A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. Signals usuall\footnote{A noteworthy exception is \textcite{breon-drish_existence_2015}, which allows signals and payoff distributions to vary to a greater degree -- namely, that the density of the payoff conditional on a private signal ($P(\tilde f \mid \eta_j)$, in terms of \textcite{kacperczyk_rational_2016}) be a member of the exponential family of distributions.} take the form of the true payoff with additive Gaussian nois, $\eta_j = \tilde f + \epsilon_j$, for investor $j$, signal $\eta_j$, payoff vector $\tilde f$, and noise term $\epsilon_j$. 
-
-I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
-
-\todo{lit review here}
-
-\section{Model framework}
-
-Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016},  which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
-
-The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
-
-I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with an arbitrary factor structure given by principal components. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
-
-$$
-P(s) = \begin{cases}
-    \pi & \text{ if } s = H \\
-    1-\pi & \text{ if } s = L \\
-\end{cases}
-$$
-
-Importantly, asset payoffs are governed by two different stochastic processes conditional on state. Payoffs of the $n$ assets are written
-
-\begin{align}
-    f_i &= \mu_{i,s} + z_i\\
-    z &= [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s) \\
-    f &\mid s \sim \Gauss(\mu_{s}, \Sigma_s)
-\end{align}
-
-\noindent That is, both the mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.\footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
-
-\begin{align}
-    \tilde f \mid s \sim \Gauss(\Gamma_s^{-1} \mu_s, \Lambda_s)
-\end{align}
-
-\noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$ for some eigenvector matrix $\Gamma$. My model only permits the orthogonalization of the prior variance $\Sigma$, but in general the transforms on $\tilde q$ and $\tilde p$ will remain correlated conditional on state.
-
-
-}
-
-Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mixture distribution with mixture weights $\pi$ and $1-\pi$. The density function is written
-
-\begin{align}
-    P(f) \sim \pi \Gauss(f \mid \mu_H, \Sigma_H) + (1-\pi) \Gauss (f \mid \mu_L, \Sigma_L)
-\end{align}
-
-\noindent Gaussian mixture distributions have the conceptual benefit of moving payoffs outside the traditional exponential family of distributions. In principle, a mixture model with more and more components can approximate any complex joint density (\cite{nguyen_approximations_2019}). The shift towards a mixture distribution does however present some technical difficulties in that closed-form posterior distributions are not generally available.
-
-\begin{figure}
-    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
-    \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
-\end{figure}
-
-As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting. Namely, the distribution of $f$ is non-Gaussian. Fortunately, the Gaussian mixture distribution I pay off benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results thus benefit from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
-
-The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1]$). Investors have exponential preferences on final-period wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utilityat time 2 (after receiving private signals) is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
-
-\begin{align}
-    U_{j2} = E_j[\exp{-\rho W_j}]
-\end{align}
-
-\noindent for law of motion on wealth $W_j = r W_0 + q'_j (f - pr)$. Since wealth effects do not enter the investment decision for CARA utilities, I follow  \textcite{kacperczyk_rational_2016} and equalize all initial wealth to $W_0$.
-
-A portion of investors receive private signals $\eta_j$ about time 3 payoffs $f$. Signals take the form of additive Gaussian noise around the true payoff, where the precision of the noise is determined by investor attention allocation. The form of a private signal is
-
-\begin{align}
-    \eta_j \sim \Gauss(f, \Sigma_{\eta,j})
-\end{align}
-
-\noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is a \textit{unit} of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply higher precision, and thus a more accurate signal of $f$.
-
-Investors have limited attention, in that they cannot pay attention to all the signals they would like. Concretely, this constraint is written
-
-\begin{align}
-    \sum_{i=1}^n K_{ij} \le K_j
-\end{align}
-
-\noindent though for simplicity I equalize attention constraints across investors to $K_j = K$ for informed investors and $K_j = 0$ for uninformed investors. Uninformed investors can only use prices as signals about payoffs, whereas informed investors can use both prices and private signals. The attention constraint utilized here is common in the information choice literature -- see \textcite{kacperczyk_rational_2016}.
-
-Investors have two optimization problems to make. First, if the investor is informed, they must allocate their attention across private signals at time 1. Second, conditional on any information observed in time 1, investors construct portfolios to optimize expected utility at time 2, $U_{j2}$.
-
-The investor's information choice problem is to maximize expected time-1 utility $U_{j1}$:
-
-\begin{maxi}
-    {K_{ij}}{U_{j1} = E\bigg[ E_j[\exp{-\rho W_j}]\bigg]}
-    {\label{eq:learning-opt}}{}
-    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
-    \addConstraint{\sum_i K_{ij}}{ \le 1}
-    \addConstraint{K_{ij}}{\ge 0, \quad \forall i}
-\end{maxi}
-
-\noindent Next, the time-2 portfolio choice problem is to maximize expected utility $U_{j2}$:
-
-
-\begin{maxi}
-    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
-    {\label{eq:learning-opt}}{}
-    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
-\end{maxi}
-
-Finally, markets must clear at price $p$ and quantities $q_j$, leading to the traditional market clearing condition
-
-\begin{align}
-    \int_j{q_j(p)} = \overline x + x
-\end{align}
-
-\noindent Market clearing requires that quantities and prices be such that all supply is allocated to an investor. I now turn to the formal declaration of an equilibrium in my setting, as in \textcite{breon-drish_existence_2015}.
-
-\begin{definition}
-    A noisy rational expectations equilibrium (NREE) is a function $p(s, f, x)$ that maps the state $s$, payoffs $f$, and asset supply $x$ to a vector of prices for the $n$ assets, such that (a) prices maximize aggregate surplus:
-
-    \begin{align}
-        q_j(p, \eta_j) \in \arg\max_{q_j} E_j [\exp{-\rho W_j} \mid \eta_j, p], \quad \forall j \in [0,1]
-    \end{align}
-
-    \noindent that (b) markets clear, and (c) that all agents are optimizing conditional on their information set $\{p, \eta_j\}$.
-
-\end{definition}
-
-Prices carrying informational content is a long-standing proposition in noisy rational expectations models like \textcite{grossman_efficiency_1976}, \textcite{admati_noisy_1985}, and others. The often-conjectured linear price function in noisy rational expectations models are interperetable as Gaussian signals around the true payoffs with noise due to uncertain asset supply. Fortunately, my model permits the use of a linear pricing function and the corresponding Gaussian signal as long as rational expectations hold -- equilibrium prices must be a function of the true payoffs $f$. 
-
-I conjecture and verify that the pricing function follows the form
-
-\begin{align}
-    p = A + B f + C x
-\end{align}
-
-\noindent The linear form of $p$ is Gaussian, conditional on $f$, so the closed-form posterior for an investor $j$ is well-defined:
-
-\begin{align*}
-    P(f \mid \eta_j, p) &= \frac{P(\eta_j, p \mid f) P(f)}{P(\eta_j, p)} \\
-    &= \frac{P(\eta_j, p \mid f, s_H) P(f \mid s_H)P(s_H) + P(\eta_j, p \mid f, s_L) P(f \mid s_L)P(s_L)}{
-        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)}\\
-    &= \frac{\pi P(\eta_j, p \mid f, s_H) P(f \mid s_H) + (1-\pi)P(\eta_j, p \mid f, s_L) P(f \mid s_L)}{
-        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)
-    }
-\end{align*}
-
-\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator. To identify these posteriors, it is useful to note that the three variables of interest to investor $j$, $m_j = [f, p, \eta_j]' \mid s$, is Normal. Prices conditional on $s$ are the sum of two Gaussians (payoff shocks $z$ and supply shocks $x$). 
-
-The mean of $m_j \mid s$ is
-
-$$
-E[m_j \mid s] = [\mu_s, A + B\mu_s + C \bar x, \mu_s]
-$$
-
-\noindent with the block variance matrix
-
-$$
-\Var[m_j \mid s] = \begin{bmatrix}
-    \Sigma_s & B \Sigma_s & \Sigma_s \\
-    B \Sigma_s & B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
-    \Sigma_s & B \Sigma_s & \Sigma_s + \Sigma_j
-\end{bmatrix}
-$$
-
-The posterior density of interest, $P(f \mid p, \eta_j, s)$, is well-defined by the rules of the multivariate Gaussian. Both the joint, prior, and posterior are all Gaussian. 
-
-To derive the posterior mean and variance, denote the aggregate signal held by investor $j$ as $y_j = [p, \eta_j]'$ and the corresponding state mean of that signal $\bar y_{j,s} = [A + B \mu_s + C \bar x, \mu_s]'$. Then the mean $\hat \mu_{j,s}$ and variance $\hat \Sigma_{j,s}$ of this posterior density are given by the identities
-
-\begin{align*}
-    \hat \Sigma_{j,s} &= \Sigma_s - \Omega_{1,2} \Omega_{2,2,j}^{-1} \Omega_{2,1} \\ 
-    \hat \mu_{j,s} &= \mu_s + \Omega_{1,2} \Omega_{2,2,j}^{-1} (y_j - \bar y_{j,s})
-\end{align*}
-
-\noindent where $\Omega_{1,2}$, $\Omega_{2,1}$, and $\Omega_{2,2}$ are block matrices formed from the partition of $\Var[m_j \mid s]$:
-
-\begin{align*}
-    \Omega_{1,2} &= \Omega_{2,1}' = \begin{bmatrix}
-        B \Sigma_s & \Sigma_s
-    \end{bmatrix} \\
-    \Omega_{2,2,j} &= \begin{bmatrix}
-        B\Sigma_s B' + C \Sigma_x C' & B \Sigma_s \\
-        B \Sigma_s & \Sigma_s + \Sigma_j
-    \end{bmatrix}
-\end{align*}
-
-
-
-\todo{Derive the joint density of prices}
-
-\begin{figure}
-    \centering
-    \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[1, 10].png}
-        \caption{$\bar K_1 = 0.1, \bar K_2 = 10$}
-        \label{fig:unimode}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[10, 1].png}
-        \caption{$\bar K_1 = 10, \bar K_2 = 0.1$}
-        \label{fig:bimode}
-    \end{subfigure}
-    \caption{The posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate that the modal point varies dramatically with attention. State 2, the mode on the bottom of the figure, has twice the variance of state 1.}
-    \label{fig:swapped}
-\end{figure}
-
-
-\section{Equilibrium}
-
-\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using this solution to determine the optimal information choice. I defer to their solution, though with some added complexity due to the change in the densities of $f$, $s$, and $p$ from multivariate Gaussians to mixture distributed variables.
-
-\begin{maxi}
-    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
-    {\label{eq:learning-opt}}{}
-    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
-\end{maxi}
-
-\pagebreak
-\appendix
-
-\section{Mixture model variance}
-
-The variance-covariance matrix of variable $X$ following a Gaussian mixture distribution with means $\mu = [\mu_1, \mu_2, \dots, \mu_k]'$, covariances $\Sigma= [\Sigma_1, \Sigma_2, \dots, \Sigma_k]$, and mixture proportions $\pi = [\pi_1, \pi_2, \dots, \pi_k]'$ is\footnote{From https://math.stackexchange.com/questions/195911/calculation-of-the-covariance-of-gaussian-mixtures} 
-
-\begin{align}
-    \Var[X] &= E[\Var[X \mid k]] + \Var[E[X \mid k]] \\
-            &= \sum_k  \pi_k  \bigg(\Sigma_k + (\mu_k - \overline{\mu})(\mu_k - \overline{\mu})' \bigg)
-\end{align}
-
-\noindent for $\overline{\mu}=\sum_k \pi_k \mu_k$.
 
 % \newpage
 % \printbibliography
