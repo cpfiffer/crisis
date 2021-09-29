@@ -85,6 +85,21 @@ function density_grid(η, Σj, params, bound=5, step=.1)
         [analytic_posterior([x,y], η, Σj, params) for x in xs, y in ys]
 end
 
+function convex_combo(weight, thing1, thing2)
+    return weight * thing1 + (1-weight) * thing2
+end
+
+function gmm_covar(m1, m2, s1, s2, s_hat)
+    mbar = convex_combo(s_hat, m1, m2)
+
+    t1 = (m1 - mbar) * (m1 - mbar)'
+    t2 = (m2 - mbar) * (m2 - mbar)'
+
+    sbar = convex_combo(s_hat, s1, s2) + convex_combo(s_hat, t1, t2)
+
+    return mbar, sbar
+end
+
 function plot_post(η, Σj)
     nlines = 10
     px = 800
@@ -140,7 +155,7 @@ end
 
 # Individual posterior
 function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, plotting=false, person=0)
-    @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x = params
+    @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name = params
 
     # First posterior
     S_11 = Σ1
@@ -200,7 +215,7 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, pl
 
     if plotting
         # Mixtures
-        prior = MixtureModel([g1, g2], true_s)
+        prior = prior_mixture(params)
         # posterior = MixtureModel([post1, post2], [s_hat, 1-s_hat])
         posterior = MixtureModel([post1, post2], true_s)
 
@@ -222,8 +237,8 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, pl
         end
 
         pl = plot(plot1, plot2, dpi=180)
-        !ispath("plots/individuals/") && mkpath("plots/individuals/")
-        savefig("plots/individuals/$person.png")
+        !ispath("plots/individuals/$sim_name/") && mkpath("plots/individuals/$sim_name/")
+        savefig("plots/individuals/$sim_name/$person.png")
         # sleep(0.1)
     end
 
@@ -244,9 +259,9 @@ end
 #     return I - sb * inv(2 .* inv(Σ1) + 2 .* inv(Σ2))
 # end
 
-# function C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σx, Ση_bar)
+# function C(ρ, s_bar, Σ_bar_1, Σ_bar_2, Σ_x, Ση_bar)
 #     sb = sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
-#     return -ρ .* sb * (I + 1/ρ^2 * inv(Σx) * Ση_bar)
+#     return -ρ .* sb * (I + 1/ρ^2 * inv(Σ_x) * Ση_bar)
 # end
 
 function qstar(ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l, p, r)
@@ -328,15 +343,18 @@ function investor_kl(zs)
 end
 
 # The loop!
-function equilibrium(params, ρ=1, J = 5000, K=1)
+function equilibrium(params; finalplot = true)
     # Extract parameters
-    @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name = params
+    @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name, ρ, J, K, seed, do_seed = params
+    
+    g1 = MvNormal(μ1, Σ1)
+    g2 = MvNormal(μ2, Σ2)
     
     # Setup
     !ispath("results/individuals/$sim_name") && mkpath("results/individuals/$sim_name")
 
     # Set a seed
-    Random.seed!(1)
+    do_seed && Random.seed!(seed)
 
     # Draw a state
     s = rand(Categorical(true_s))
@@ -346,7 +364,7 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
     n_assets = length(f)
 
     # Calculate supply
-    x = rand(MvNormal(x_bar, Σx))
+    x = rand(MvNormal(x_bar, Σ_x))
 
     # Generate signals
     # Σj = [rand_attention(n_assets, 1) for _ in 1:J]
@@ -408,7 +426,9 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
                     uj, t1, t2, t3 = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                     u_sum += uj
 
-                    mus = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
+                    mus, sigs = gmm_covar(zs.μ1, zs.μ2, zs.Σ1, zs.Σ2, zs.s_hat)
+                    mus_backup = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
+                    @assert mus == mus_backup
                     expected_return = mus ./ p .- 1
 
                     push!(res, (
@@ -416,6 +436,7 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
                         mu = mus,
                         mu_1 = zs.μ1,
                         mu_2 = zs.μ2,
+                        Sigma = sigs,
                         Sigma_1 = zs.Σ1,
                         Sigma_2 = zs.Σ2,
                         forecast_error = f - mus,
@@ -437,13 +458,14 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
                         true_sigma_2 = Σ2,
                         price = p,
                         act_return = f ./ p,
+                        exante = (f - p)' * inv(Σj[j]) * (f - p),
                         A = a,
                         B = b,
                         C = c,
                         group = j <= divline ? "attn_asset_1" : "attn_asset_2",
                     ))
 
-                    if j == 1 || j == divline+1
+                    if finalplot && j == 1 || j == divline+1
                         open("results/individuals/$sim_name/$j.txt", write=true, create=true) do io
                             println(io, "Person $j\n")
                             println(io, "--------------------------------------------")
@@ -506,7 +528,6 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
             return norm_diff, res #+ param_norm
         catch e
             if e isa PosDefException
-                println("Postive definite exception")
                 return Inf, res
             end
 
@@ -537,110 +558,289 @@ function equilibrium(params, ρ=1, J = 5000, K=1)
     println("Solved!")
     display(res)
 
-    actual = target(res.minimizer, verbose=true, plotting=true, store=true)
+    actual = target(res.minimizer, verbose=finalplot, plotting=finalplot, store=true)
     df = DataFrame(actual[2])
 
     try
-        sz = (800, 800)
-        # Do economy plotting
-        !ispath("plots/economy/$sim_name/") && mkpath("plots/economy/$sim_name/")
+        if finalplot
+            sz = (800, 800)
+            # Do economy plotting
+            !ispath("plots/economy/$sim_name/") && mkpath("plots/economy/$sim_name/")
 
-        # Plot s_hat
-        density(df.s_hat, group=df.group, title="Distribution of s_hat", size=sz)
-        savefig("plots/economy/$sim_name/s_hat.png")
+            # Plot s_hat
+            density(df.s_hat, group=df.group, title="Distribution of s_hat", size=sz)
+            savefig("plots/economy/$sim_name/s_hat.png")
 
-        # Plot forecast errors
-        density(df.forecast_sse, group=df.group, title="Distribution of forecast SSE", size=sz)
-        savefig("plots/economy/$sim_name/forecast_sse.png")
+            # Plot forecast errors
+            density(df.forecast_sse, group=df.group, title="Distribution of forecast SSE", size=sz)
+            savefig("plots/economy/$sim_name/forecast_sse.png")
 
-        # Plot expected utility
-        density(df.utility, group=df.group, title="Distribution of E[uj]", size=sz)
-        savefig("plots/economy/$sim_name/utility.png")
+            # Plot expected utility
+            density(df.utility, group=df.group, title="Distribution of E[uj]", size=sz)
+            savefig("plots/economy/$sim_name/utility.png")
 
-        # Plot expected utility (term 1)
-        density(df.utility_mean, group=df.group, title="Distribution of E[uj], term 1 (mean payoff)", size=sz)
-        savefig("plots/economy/$sim_name/utility-1.png")
+            # Plot expected utility (term 1)
+            density(df.utility_mean, group=df.group, title="Distribution of E[uj], term 1 (mean payoff)", size=sz)
+            savefig("plots/economy/$sim_name/utility-1.png")
 
-        # Plot expected utility (term 2)
-        density(df.utility_var, group=df.group, title="Distribution of E[uj], term 2 (variance disutility)", size=sz)
-        savefig("plots/economy/$sim_name/utility-2.png")
+            # Plot expected utility (term 2)
+            density(df.utility_var, group=df.group, title="Distribution of E[uj], term 2 (variance disutility)", size=sz)
+            savefig("plots/economy/$sim_name/utility-2.png")
 
-        # Plot expected utility (term 1)
-        density(df.utility_price, group=df.group, title="Distribution of E[uj], term 3 (price disutility)", size=sz)
-        savefig("plots/economy/$sim_name/utility-3.png")
+            # Plot expected utility (term 1)
+            density(df.utility_price, group=df.group, title="Distribution of E[uj], term 3 (price disutility)", size=sz)
+            savefig("plots/economy/$sim_name/utility-3.png")
 
-        # # Plot utility function
-        # density(df.exp_utility, group=df.group, title="Distribution of E[uj], exponential")
-        # savefig("plots/economy/$sim_name/utility-all.png")
+            # Plot ex-ante utility
+            density(df.exante, title="Density of ex-ante", size=sz)
+            savefig("plots/economy/$sim_name/exante.png")
 
-        # # Plot expected good utility
-        # density(df.good_utility, group=df.group, title="Distribution of E[uj], good state")
-        # savefig("plots/economy/$sim_name/utility-good.png")
+            # # Plot utility function
+            # density(df.exp_utility, group=df.group, title="Distribution of E[uj], exponential")
+            # savefig("plots/economy/$sim_name/utility-all.png")
 
-        # # Plot expected bad utility
-        # density(df.bad_utility, group=df.group, title="Distribution of E[uj], bad state")
-        # savefig("plots/economy/$sim_name/utility-bad.png")
+            # # Plot expected good utility
+            # density(df.good_utility, group=df.group, title="Distribution of E[uj], good state")
+            # savefig("plots/economy/$sim_name/utility-good.png")
 
-        # Plot expected returns
-        plot(
-            density(map(z -> z[1], df.expected_return), group=df.group, title="Distribution of expected returns (A1)"),
-            density(map(z -> z[2], df.expected_return), group=df.group, title="Distribution of expected returns (A2)"),
-            size=sz
-        )
-        scatter!([tuple(df.act_return[1]...)], size=sz)
-        savefig("plots/economy/$sim_name/expected_returns.png")
+            # # Plot expected bad utility
+            # density(df.bad_utility, group=df.group, title="Distribution of E[uj], bad state")
+            # savefig("plots/economy/$sim_name/utility-bad.png")
 
-        # Plot quantity
-        plot(
-            density(map(z -> z[1], df.quantity), group=df.group, title="Distribution of quantity (A1)", size=sz),
-            density(map(z -> z[2], df.quantity), group=df.group, title="Distribution of quantity (A2)", size=sz),
-        )
-        savefig("plots/economy/$sim_name/quantity.png")
+            # Plot expected returns
+            plot(
+                density(map(z -> z[1], df.expected_return), group=df.group, title="Distribution of expected returns (A1)"),
+                density(map(z -> z[2], df.expected_return), group=df.group, title="Distribution of expected returns (A2)"),
+                size=sz
+            )
+            scatter!([tuple(df.act_return[1]...)], size=sz)
+            savefig("plots/economy/$sim_name/expected_returns.png")
 
-        # Plot ex-post mus
-        scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat", size=sz)
-        savefig("plots/economy/$sim_name/mu_hat.png")
-    finally
-        return res, df
+            # Plot quantity
+            plot(
+                density(map(z -> z[1], df.quantity), group=df.group, title="Distribution of quantity (A1)", size=sz),
+                density(map(z -> z[2], df.quantity), group=df.group, title="Distribution of quantity (A2)", size=sz),
+            )
+            savefig("plots/economy/$sim_name/quantity.png")
+
+            # Plot ex-post mus
+            scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat", size=sz)
+            savefig("plots/economy/$sim_name/mu_hat.png")
+        end
+    catch e
+        rethrow(e)
     end
     # return res
-
+    
     # Using NLSolve.jl
     # res = nlsolve(target, init_θ, autodiff=:forward, iterations=10_000)
     # target(res.zero, verbose=true)
     # return res
+    return df
 end
 
-# true_s = [1.0, 0.0] # Degenerate
-# true_s = [0.5, 0.5]
-# μ1 = [1.0, 2.0]
-# μ2 = [1.0, -2.0]
+# Set up parameters
+all_j = 1_000
+all_k = 10
 
-# Σ1 = [1.0 0; 0 1.0]
-# Σ2 = [1.0 0; 0 1.0] .* 1
-# # Σ1 = [2.0 0; 0. 1.0]
-# # Σ2 = [1.0 0; 0 2.0]
-# Σj = [1 0.0; 0.0 1.0] .* 5
-# Σj = [1 0.0; 0.0 5.0] .* 5
+## Baseline, nothing interesting
+baseline_params = (
+    sim_name = "baseline",
+    μ1 = [1.0, 1.0],
+    μ2 = [1.0, 1.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0; 0 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
 
-# Supply settings
-# x_bar = [0.0, 0.0]
-# Σx = [1.0 0.0; 0.0 1.0]
-# supply_dist = MvNormal(x_bar, Σx)
-
-
-params = (
-    sim_name = "mean-shift",
+## μ1[2] ≠ μ2[2]
+two_meanshift = (
+    sim_name = "a2-mean-shift",
     μ1 = [1.0, 2.0],
     μ2 = [1.0, -2.0],
     Σ1 = [1.0 0; 0 1.0],
     Σ2 = [1.0 0; 0 1.0],
     x_bar = [0.0, 0.0],
-    Σx = [1.0 0.0; 0.0 1.0],
-    J = 10,
-    K = 1,
-    ρ = 1
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
 )
 
-v = equilibrium(params);
-println()
+## Σ1[2,2] ≠ Σ2[2,2]
+two_varshift = (
+    sim_name = "a2-var-shift",
+    μ1 = [1.0, 1.0],
+    μ2 = [1.0, 1.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0; 0 5.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+## μ1[2] ≠ μ2[2], Σ1[2,2] ≠ Σ2[2,2]
+two_meanvarshift = (
+    sim_name = "a2-meanvar-shift",
+    μ1 = [1.0, 2.0],
+    μ2 = [1.0, -2.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0; 0 5.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+# State 2 correlation rises
+morecorr = (
+    sim_name = "more-corr",
+    μ1 = [1.0, 1.0],
+    μ2 = [1.0, 1.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0.1; 0.1 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+# State 2 correlation is negative
+lesscorr = (
+    sim_name = "less-corr",
+    μ1 = [1.0, 1.0],
+    μ2 = [1.0, 1.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 -0.1; -0.1 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+param_set = [
+    baseline_params,
+    two_meanshift,
+    two_varshift,
+    two_meanvarshift,
+    morecorr,
+    lesscorr,
+]
+
+# sims = map(p -> p.sim_name => equilibrium(p; finalplot=true), param_set)
+# println("Done, C")
+# v = equilibrium(params);
+
+# prices = map(z -> z[1] => z[2][2][1,:price], sims)
+# prc = map(z -> tuple(z[2]...), prices)
+# simnames = map(z -> z[1], sims)
+# scatter(prc, group=simnames, legend=:topleft, xlabel="Asset 1", ylabel="Asset 2")
+# savefig("prices.png")
+
+# Plot attention line
+# ks = 1:0.5:10
+# a1 = []
+# a2 = []
+# for k in ks
+#     new_params = (
+#         sim_name = "k-$k",
+#         μ1 = [1.0, 2.0],
+#         μ2 = [1.0, -2.0],
+#         Σ1 = [2.0 0; 0 1.0],
+#         Σ2 = [1.0 0.0; 0.0 1.0],
+#         x_bar = [0.0, 0.0],
+#         Σ_x = [1.0 0.0; 0.0 1.0],
+#         J = 5_000,
+#         K = k,
+#         ρ = 1,
+#         true_s = [0.5, 0.5],
+#         seed = 1
+#     )
+
+#     eq = equilibrium(new_params)
+#     push!(a1, eq[2].price[1][1])
+#     push!(a2, eq[2].price[1][2])
+# end
+
+# plot(ks, a1)
+# savefig("attention-a1.png")
+# plot(ks, a2)
+# savefig("attention-a2.png")
+
+function exante_calc(N=1_000)
+    np = (
+        sim_name = "a2-mean-shift",
+        μ1 = [1.0, 1.0],
+        μ2 = [-1.0, 1.0],
+        Σ1 = [1.0 0; 0 1.0],
+        Σ2 = [1.0 0.1; 0.1 1.0],
+        x_bar = [0.0, 0.0],
+        Σ_x = [1.0 0.0; 0.0 1.0],
+        J = 1_000,
+        K = 1.0,
+        ρ = 1,
+        true_s = [.8,.2],
+        seed = 1,
+        do_seed = true
+    )
+
+    mm = prior_mixture(np)
+    supply = MvNormal(np.x_bar, np.Σ_x)
+
+    eq = equilibrium(np, finalplot=false)
+    a = eq.A[1]
+    b = eq.B[1]
+    c = eq.C[1]
+
+    function tgt(σ_j)
+        try
+            k1 = logistic(σ_j[1])
+            ex = zeros(N)
+            eij = diagm([k1 * np.K, (1-k1) * np.K])
+            for k in 1:N
+                f = rand(mm)
+                x = rand(supply)
+                p = a + b*f + c*x
+                ex[k] = (p - f)' * inv(eij) * (p-f)
+            end
+
+            return mean(ex)
+        catch e
+            return Inf
+        end
+    end
+
+    xs = -3:0.1:3
+    sims = map(z -> tgt([z]), xs)
+    # optimal = [m, 1-m]
+    return map(logistic, xs), sims
+end
+
+ex = exante_calc()
