@@ -326,24 +326,79 @@ function expected_utility(p, r, ρ, s_hat, Σ_h, Σ_l, μ_h, μ_l)
     return (uj=t1 + t2 + t3, u_ret=t1, u_var=t2, u_price=t3)
 end
 
-function investor_kl(zs)
-    return missing
-    s_hat, μ1_hat, Σ1_hat, μ2_hat, Σ2_hat = zs
-
-    # Mixtures
-    prior = MixtureModel([g1, g2], true_s)
-    posterior = MixtureModel([
-        MvNormal(μ1_hat, Σ1_hat),
-        MvNormal(μ2_hat, Σ2_hat),
-    ], [s_hat, 1-s_hat])
-
-    # Approximate KL
-    rn = -5:0.01:5
-    return sum(pdf(prior, [x,y]) * (logpdf(prior, [x,y]) - logpdf(posterior, [x,y])) for x in rn, y in rn)
+function chernoff_distance(mu_a, mu_b, sigma_a, sigma_b, alpha=0.5)
+    mu_diff = (1-alpha) .* mu_a - alpha .* mu_b
+    sigma_diff = (1-alpha) .* sigma_a + alpha .* sigma_b
+    return (1-alpha) * alpha / 2 * mu_diff' * inv(sigma_diff) * mu_diff .+
+        1/2 * log(det(sigma_diff)) .- (log(det(sigma_a)^(1-alpha)) + log(det(sigma_b)^alpha))
 end
 
+function kl(mu_a, mu_b, sigma_a, sigma_b)
+    logdet_a = log(det(sigma_a))
+    logdet_b = log(det(sigma_b))
+    mu_diff = mu_a - mu_b
+
+    return 1/2 * (
+        logdet_b - logdet_a + (mu_diff)' * inv(sigma_a) * mu_diff +
+        tr(inv(sigma_b)*sigma_a) - length(mu_a)
+    )
+end
+
+# durrieuThiranKelly_kldiv_icassp2012_R1-1.pdf
+function approximate_kl(prior, posterior)
+    x = rand(posterior, 10_000)
+    return mean(logpdf(posterior, x) - logpdf(prior, x))
+end
+
+function gaussian_entropy(sigma)
+    d = size(sigma, 1)
+    return 1/2 * (log(det(sigma)) + d * log(2 * π) + d)
+end
+
+function investor_entropy(zs, params)
+    s_hat, μ1_hat, Σ1_hat, μ2_hat, Σ2_hat = zs
+    @unpack μ1, μ2, Σ1, Σ2, true_s = params
+
+    c = [s_hat, 1-s_hat]
+    m = [μ1_hat, μ2_hat]
+    s = [Σ1_hat, Σ2_hat]
+    
+    h_upper = sum(c[i] * gaussian_entropy(s[i]) for i in 1:2)
+    h_lower = copy(h_upper)
+    for i in 1:2
+        inner_upper = 0
+        inner_lower = 0
+        for j in 1:2
+            kl_distance = kl(m[i], m[j], s[i], s[j])
+            chernoff = chernoff_distance(m[i], m[j], s[i], s[j])
+            # display(kl_distance)
+            # display(chernoff)
+            inner_upper += c[j] * exp(-kl_distance)
+            inner_lower += c[j] * exp(-chernoff)
+        end
+        h_upper -= c[i] * log(inner_upper)
+        h_lower -= c[i] * log(inner_lower)
+    end
+
+    return h_lower, h_upper
+end
+
+# function investor_kl(zs, params)
+#     s_hat, μ1_hat, Σ1_hat, μ2_hat, Σ2_hat = zs
+#     @unpack μ1, μ2, Σ1, Σ2, true_s = params
+
+#     c = [s_hat, 1-s_hat]
+
+#     h = 
+#     for i in 1:2
+#         for j in 1:2
+#             # h -= 
+#         end
+#     end
+# end
+
 # The loop!
-function equilibrium(params; finalplot = true)
+function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothing)
     # Extract parameters
     @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name, ρ, J, K, seed, do_seed = params
     
@@ -357,10 +412,10 @@ function equilibrium(params; finalplot = true)
     do_seed && Random.seed!(seed)
 
     # Draw a state
-    s = rand(Categorical(true_s))
+    s = isnothing(s) ? rand(Categorical(true_s)) : s
 
     # Draw payoffs
-    f = s == 1 ? rand(g1) : rand(g2)
+    f = isnothing(f) ? (s == 1 ? rand(g1) : rand(g2)) : f
     n_assets = length(f)
 
     # Calculate supply
@@ -400,7 +455,7 @@ function equilibrium(params; finalplot = true)
     # display(init_θ)
     # init_θ = init_θ.minimizer
 
-    function target(θ; verbose=false, plotting=false, store=false)
+    function target(θ; verbose=false, plotting=false)
         # Conjecture A, B, C matrices
         a, b, c = price_matrices(θ, n_assets)
         p = a + b*f + c*x
@@ -426,10 +481,19 @@ function equilibrium(params; finalplot = true)
                     uj, t1, t2, t3 = expected_utility(p, r, ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2)
                     u_sum += uj
 
+                    mixture_post = MixtureModel([
+                        MvNormal(zs.μ1, zs.Σ1),
+                        MvNormal(zs.μ2, zs.Σ2)],
+                        [zs.s_hat, 1-zs.s_hat]
+                    )
                     mus, sigs = gmm_covar(zs.μ1, zs.μ2, zs.Σ1, zs.Σ2, zs.s_hat)
                     mus_backup = zs.s_hat * zs.μ1 + (1-zs.s_hat) * zs.μ2
                     @assert mus == mus_backup
                     expected_return = mus ./ p .- 1
+                    expected_variance = diag(sigs) ./ (p .^ 2)
+
+                    entropy_l, entropy_h = investor_entropy(zs, params)
+                    kl_calc= approximate_kl(mixture_post, prior_mixture(params))
 
                     push!(res, (
                         s_hat = zs.s_hat,
@@ -442,6 +506,7 @@ function equilibrium(params; finalplot = true)
                         forecast_error = f - mus,
                         forecast_sse = sum((f - mus).^2),
                         expected_return = expected_return,
+                        expected_variance = expected_variance,
                         quantity = q,
                         utility = uj,
                         utility_mean = t1,
@@ -463,6 +528,9 @@ function equilibrium(params; finalplot = true)
                         B = b,
                         C = c,
                         group = j <= divline ? "attn_asset_1" : "attn_asset_2",
+                        entropy_lower = entropy_l,
+                        entropy_upper = entropy_h,
+                        kl = kl_calc
                     ))
 
                     if finalplot && j == 1 || j == divline+1
@@ -478,7 +546,9 @@ function equilibrium(params; finalplot = true)
                             println(io, "Sigma_2:            ", round.(zs.Σ2, digits=3))
                             println(io, "forecast error:     ", round.(f - mus, digits=3))
                             println(io, "forecast SSE:       ", sum((f - mus).^2))
-                            println(io, "KL:                 ", round(investor_kl(zs), digits=2))
+                            println(io, "H_l:                ", round(entropy_l, digits=2))
+                            println(io, "H_u:                ", round(entropy_h, digits=2))
+                            println(io, "kl:                 ", round(kl_calc, digits=2))
                             println(io, "E[r]:               ", round.(expected_return, digits=2))
                             println(io)
                             println(io, "\nQuantity")
@@ -546,7 +616,7 @@ function equilibrium(params; finalplot = true)
     # nltarget(init_θ)
 
     # Using Optim.jl
-    res = optimize(
+    result = optimize(
         tt,
         # g!,
         init_θ, #randn(length(init_θ)),
@@ -556,16 +626,27 @@ function equilibrium(params; finalplot = true)
         Optim.Options(iterations=100_000)
     )
     println("Solved!")
-    display(res)
+    display(result)
 
-    actual = target(res.minimizer, verbose=finalplot, plotting=finalplot, store=true)
-    df = DataFrame(actual[2])
+    actual = target(result.minimizer, verbose=finalplot, plotting=finalplot)
+    mats = price_matrices(result.minimizer, n_assets)
+    eq_price = mats[1] + mats[2] * f + mats[3] * x
+    df = missing
 
     try
-        if finalplot
+        if store && finalplot
+            df = DataFrame(actual[2])
+            
             sz = (800, 800)
             # Do economy plotting
             !ispath("plots/economy/$sim_name/") && mkpath("plots/economy/$sim_name/")
+
+            # Plot prior
+            bounds = -5:0.01:5
+            mm = MixtureModel([g1, g2], true_s)
+            zs = [pdf(mm, [x,y]) for x in bounds, y in bounds]
+            contour(bounds, bounds, zs, title="Prior payoff density, $sim_name", xlabel="Asset 2", ylabel="Asset 1")
+            savefig("plots/economy/$sim_name/prior.png")
 
             # Plot s_hat
             density(df.s_hat, group=df.group, title="Distribution of s_hat", size=sz)
@@ -609,12 +690,19 @@ function equilibrium(params; finalplot = true)
 
             # Plot expected returns
             plot(
-                density(map(z -> z[1], df.expected_return), group=df.group, title="Distribution of expected returns (A1)"),
-                density(map(z -> z[2], df.expected_return), group=df.group, title="Distribution of expected returns (A2)"),
+                density(map(z -> z[1], df.expected_return), group=df.group, title="Asset 1"),
+                density(map(z -> z[2], df.expected_return), group=df.group, title="Asset 2"),
                 size=sz
             )
-            scatter!([tuple(df.act_return[1]...)], size=sz)
             savefig("plots/economy/$sim_name/expected_returns.png")
+
+            # Plot expected variance
+            plot(
+                density(map(z -> z[1], df.expected_variance), group=df.group, title="Asset 1"),
+                density(map(z -> z[2], df.expected_variance), group=df.group, title="Asset 2"),
+                size=sz
+            )
+            savefig("plots/economy/$sim_name/expected_variances.png")
 
             # Plot quantity
             plot(
@@ -626,6 +714,16 @@ function equilibrium(params; finalplot = true)
             # Plot ex-post mus
             scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat", size=sz)
             savefig("plots/economy/$sim_name/mu_hat.png")
+
+            # Entropy
+            density(df.entropy_upper, group=df.group, title="Distribution of h_u", size=sz)
+            savefig("plots/economy/$sim_name/entropy_u.png")
+
+            density(df.entropy_lower, group=df.group, title="Distribution of h_l", size=sz)
+            savefig("plots/economy/$sim_name/entropy_l.png")
+
+            density(df.kl, group=df.group, title="Distribution of kl", size=sz)
+            savefig("plots/economy/$sim_name/kl.png")
         end
     catch e
         rethrow(e)
@@ -636,11 +734,15 @@ function equilibrium(params; finalplot = true)
     # res = nlsolve(target, init_θ, autodiff=:forward, iterations=10_000)
     # target(res.zero, verbose=true)
     # return res
-    return df
+    if store
+        return df, mats, eq_price
+    else
+        return missing, mats, eq_price
+    end
 end
 
 # Set up parameters
-all_j = 1_000
+all_j = 1_00
 all_k = 10
 
 ## Baseline, nothing interesting
@@ -717,7 +819,7 @@ morecorr = (
     μ1 = [1.0, 1.0],
     μ2 = [1.0, 1.0],
     Σ1 = [1.0 0; 0 1.0],
-    Σ2 = [1.0 0.1; 0.1 1.0],
+    Σ2 = [1.0 0.2; 0.2 1.0],
     x_bar = [0.0, 0.0],
     Σ_x = [1.0 0.0; 0.0 1.0],
     J = all_j,
@@ -734,7 +836,41 @@ lesscorr = (
     μ1 = [1.0, 1.0],
     μ2 = [1.0, 1.0],
     Σ1 = [1.0 0; 0 1.0],
-    Σ2 = [1.0 -0.1; -0.1 1.0],
+    Σ2 = [1.0 -0.2; -0.2 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+# State 2 correlation rises, means shift
+morecorr_mean = (
+    sim_name = "more-corr-meanshift",
+    μ1 = [1.0, 2.0],
+    μ2 = [1.0, -2.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0.2; 0.2 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
+# State 2 correlation rises, variances & means shift
+morecorr_meanvar = (
+    sim_name = "more-corr-meanvarshift",
+    μ1 = [1.0, 2.0],
+    μ2 = [1.0, -2.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [2.0 0.4; 0.4 2.0],
     x_bar = [0.0, 0.0],
     Σ_x = [1.0 0.0; 0.0 1.0],
     J = all_j,
@@ -752,95 +888,48 @@ param_set = [
     two_meanvarshift,
     morecorr,
     lesscorr,
+    morecorr_mean,
+    morecorr_meanvar
 ]
 
 # sims = map(p -> p.sim_name => equilibrium(p; finalplot=true), param_set)
 # println("Done, C")
-# v = equilibrium(params);
 
-# prices = map(z -> z[1] => z[2][2][1,:price], sims)
-# prc = map(z -> tuple(z[2]...), prices)
-# simnames = map(z -> z[1], sims)
-# scatter(prc, group=simnames, legend=:topleft, xlabel="Asset 1", ylabel="Asset 2")
-# savefig("prices.png")
 
-# Plot attention line
-# ks = 1:0.5:10
-# a1 = []
-# a2 = []
-# for k in ks
-#     new_params = (
-#         sim_name = "k-$k",
-#         μ1 = [1.0, 2.0],
-#         μ2 = [1.0, -2.0],
-#         Σ1 = [2.0 0; 0 1.0],
-#         Σ2 = [1.0 0.0; 0.0 1.0],
-#         x_bar = [0.0, 0.0],
-#         Σ_x = [1.0 0.0; 0.0 1.0],
-#         J = 5_000,
-#         K = k,
-#         ρ = 1,
-#         true_s = [0.5, 0.5],
-#         seed = 1
-#     )
+# z = equilibrium(two_meanshift, store=false, finalplot=false, f=[0.5,1])
+# _, (a2,b2,c2) = equilibrium(two_meanshift, store=false, finalplot=false, f=[1.0,0.5])
 
-#     eq = equilibrium(new_params)
-#     push!(a1, eq[2].price[1][1])
-#     push!(a2, eq[2].price[1][2])
-# end
+function eq_grid(params; steps=10)
+    m = prior_mixture(params)
+    draws = rand(m, 100_000)
 
-# plot(ks, a1)
-# savefig("attention-a1.png")
-# plot(ks, a2)
-# savefig("attention-a2.png")
+    mins = minimum(draws, dims=2)
+    maxs = maximum(draws, dims=2)
+    rngs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
+    it = collect(Iterators.product(rngs...))
 
-function exante_calc(N=1_000)
-    np = (
-        sim_name = "a2-mean-shift",
-        μ1 = [1.0, 1.0],
-        μ2 = [-1.0, 1.0],
-        Σ1 = [1.0 0; 0 1.0],
-        Σ2 = [1.0 0.1; 0.1 1.0],
-        x_bar = [0.0, 0.0],
-        Σ_x = [1.0 0.0; 0.0 1.0],
-        J = 1_000,
-        K = 1.0,
-        ρ = 1,
-        true_s = [.8,.2],
-        seed = 1,
-        do_seed = true
-    )
-
-    mm = prior_mixture(np)
-    supply = MvNormal(np.x_bar, np.Σ_x)
-
-    eq = equilibrium(np, finalplot=false)
-    a = eq.A[1]
-    b = eq.B[1]
-    c = eq.C[1]
-
-    function tgt(σ_j)
-        try
-            k1 = logistic(σ_j[1])
-            ex = zeros(N)
-            eij = diagm([k1 * np.K, (1-k1) * np.K])
-            for k in 1:N
-                f = rand(mm)
-                x = rand(supply)
-                p = a + b*f + c*x
-                ex[k] = (p - f)' * inv(eij) * (p-f)
-            end
-
-            return mean(ex)
-        catch e
-            return Inf
+    as = []
+    bs = []
+    cs = []
+    ps = []
+    diffs = []
+    for i in 1:size(it, 1)
+        for j in 1:size(it, 2)
+            println("$i $j $(it[i,j])")
+            ff = vcat(it[i,j]...)
+            _, (a,b,c), p = equilibrium(two_meanshift, store=false, finalplot=false, f=ff)
+            push!(as, a)
+            push!(bs, b)
+            push!(cs, c)
+            push!(ps, p)
+            push!(diffs, ff - p)
         end
     end
-
-    xs = -3:0.1:3
-    sims = map(z -> tgt([z]), xs)
-    # optimal = [m, 1-m]
-    return map(logistic, xs), sims
+    return (a=as, b=bs, c=cs, p=ps, diff=diffs)
 end
 
-ex = exante_calc()
+val = eq_grid(two_meanshift)
+
+ps = map(z -> tuple(z...), val.p)
+diffs = map(z -> tuple(z...), val.diff)
+

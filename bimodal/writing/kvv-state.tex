@@ -1,6 +1,6 @@
 \documentclass{article}
 
-\title{Information choice and state uncertainty}
+\title{Economic complexity and information choice}
 \author{Cameron Pfiffer}
 
 \usepackage{palatino}
@@ -231,33 +231,14 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
     \end{bmatrix}
 \end{align*}
 
-
+\noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$.
 
 \todo{Derive the joint density of prices}
-
-\begin{figure}
-    \centering
-    \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[1, 10].png}
-        \caption{$\bar K_1 = 0.1, \bar K_2 = 10$}
-        \label{fig:unimode}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../plots/posterior/[10, 1].png}
-        \caption{$\bar K_1 = 10, \bar K_2 = 0.1$}
-        \label{fig:bimode}
-    \end{subfigure}
-    \caption{The posterior density $f \mid \eta=[0,0]$. The diagonals on the matrix $\Sigma_\eta$ are varied to demonstrate that the modal point varies dramatically with attention. State 2, the mode on the bottom of the figure, has twice the variance of state 1.}
-    \label{fig:swapped}
-\end{figure}
 
 
 \section{Equilibrium}
 
-\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem first, and then using this solution to determine the optimal information choice. I defer to their solution, though with some added complexity due to the change in the densities of $f$, $s$, and $p$ from multivariate Gaussians to mixture distributed variables.
+\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem at time 2 first, and then using this solution to determine the optimal information choice at time 1. I defer to their solution, though with some added complexity due to the change in the densities of payoffs $f$ from multivariate Gaussian to mixture distributed.
 
 \begin{maxi}
     {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
@@ -265,8 +246,43 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
     \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
 \end{maxi}
 
-\pagebreak
+The appendix\todo{Add to appendix} shows that the quantity $q_j$ that solves (\ref{eq:learning-opt}) takes the form
+
+\newcommand{\shat}{\hat s_j}
+\newcommand{\hShat}{\hat \Sigma_{H,j}}
+\newcommand{\lShat}{\hat \Sigma_{L,j}}
+\newcommand{\hMhat}{\hat \mu_{H,j}}
+\newcommand{\lMhat}{\hat \mu_{L,j}}
+\begin{align}
+    q_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat\big)
+\end{align}
+
+\noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only real difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the means and variances are weighted by the posterior state probabilities and summed. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
+
+I start by defining several types of economies a
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/economy/baseline/prior.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/economy/a2-mean-shift/prior.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/economy/a2-meanvar-shift/prior.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/economy/more-corr-meanvarshift/prior.png}
+    \end{subfigure}
+    \caption{Unconditional joint payoff densities of $f$ in different economies.}
+    \label{fig:priors}
+\end{figure}
+
+
+
 \appendix
+\pagebreak
 
 \section{Mixture model variance}
 

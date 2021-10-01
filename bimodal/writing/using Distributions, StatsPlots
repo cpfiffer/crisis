@@ -1,0 +1,5 @@
+using Distributions, StatsPlots
+
+d1 = Chisq(1)
+d2 = Chisq(15)
+m = MixtureModel([d1, d2])
