@@ -899,7 +899,7 @@ param_set = [
 # z = equilibrium(two_meanshift, store=false, finalplot=false, f=[0.5,1])
 # _, (a2,b2,c2) = equilibrium(two_meanshift, store=false, finalplot=false, f=[1.0,0.5])
 
-function eq_grid(params; steps=10)
+function eq_grid(params; steps=20)
     m = prior_mixture(params)
     draws = rand(m, 100_000)
 
@@ -908,28 +908,44 @@ function eq_grid(params; steps=10)
     rngs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
     it = collect(Iterators.product(rngs...))
 
+    rs(z) = reshape(z, size(it))
+
     as = []
     bs = []
     cs = []
     ps = []
     diffs = []
+    prior = []
     for i in 1:size(it, 1)
         for j in 1:size(it, 2)
             println("$i $j $(it[i,j])")
             ff = vcat(it[i,j]...)
-            _, (a,b,c), p = equilibrium(two_meanshift, store=false, finalplot=false, f=ff)
-            push!(as, a)
-            push!(bs, b)
-            push!(cs, c)
-            push!(ps, p)
-            push!(diffs, ff - p)
+            try
+                _, (a,b,c), p = equilibrium(two_meanshift, store=false, finalplot=false, f=ff)
+                push!(as, a)
+                push!(bs, b)
+                push!(cs, c)
+                push!(ps, p)
+                push!(diffs, ff - p)
+                push!(prior, pdf(m, ff))
+            catch
+                push!(as, missing)
+                push!(bs, missing)
+                push!(cs, missing)
+                push!(ps, missing)
+                push!(diffs, missing)
+                push!(prior, missing)
+            end
         end
     end
-    return (a=as, b=bs, c=cs, p=ps, diff=diffs)
+
+    return (rngs = rngs, a=as |> rs, b=bs |> rs, c=cs |> rs, p=ps |> rs, diff=diffs |> rs, prior=prior |> rs)
 end
 
 val = eq_grid(two_meanshift)
 
-ps = map(z -> tuple(z...), val.p)
-diffs = map(z -> tuple(z...), val.diff)
+# ps = map(z -> tuple(z...), val.p)
+# diffs = map(z -> tuple(z...), val.diff)
 
+contour(val.rngs[2], val.rngs[1], val.prior)
+# scatter3d(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.diff))
