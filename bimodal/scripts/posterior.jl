@@ -621,12 +621,10 @@ function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothin
         # g!,
         init_θ, #randn(length(init_θ)),
         # Newton(linesearch = BackTracking(order=2)),
-        LBFGS(),
-        autodiff=:forwarddiff,
+        # LBFGS(),
+        # autodiff=:forwarddiff,
         Optim.Options(iterations=100_000)
     )
-    println("Solved!")
-    display(result)
 
     actual = target(result.minimizer, verbose=finalplot, plotting=finalplot)
     mats = price_matrices(result.minimizer, n_assets)
@@ -899,7 +897,7 @@ param_set = [
 # z = equilibrium(two_meanshift, store=false, finalplot=false, f=[0.5,1])
 # _, (a2,b2,c2) = equilibrium(two_meanshift, store=false, finalplot=false, f=[1.0,0.5])
 
-function eq_grid(params; steps=20)
+function eq_grid(params; steps=100)
     m = prior_mixture(params)
     draws = rand(m, 100_000)
 
@@ -908,7 +906,8 @@ function eq_grid(params; steps=20)
     rngs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
     it = collect(Iterators.product(rngs...))
 
-    rs(z) = reshape(z, size(it))
+    # rs(z) = reshape(z, size(it))
+    rs(z) = z
 
     as = []
     bs = []
@@ -920,6 +919,7 @@ function eq_grid(params; steps=20)
         for j in 1:size(it, 2)
             println("$i $j $(it[i,j])")
             ff = vcat(it[i,j]...)
+            push!(prior, pdf(m, ff))
             try
                 _, (a,b,c), p = equilibrium(two_meanshift, store=false, finalplot=false, f=ff)
                 push!(as, a)
@@ -927,14 +927,13 @@ function eq_grid(params; steps=20)
                 push!(cs, c)
                 push!(ps, p)
                 push!(diffs, ff - p)
-                push!(prior, pdf(m, ff))
-            catch
+            catch e
+                println(e)
                 push!(as, missing)
                 push!(bs, missing)
                 push!(cs, missing)
                 push!(ps, missing)
                 push!(diffs, missing)
-                push!(prior, missing)
             end
         end
     end
@@ -947,5 +946,21 @@ val = eq_grid(two_meanshift)
 # ps = map(z -> tuple(z...), val.p)
 # diffs = map(z -> tuple(z...), val.diff)
 
-contour(val.rngs[2], val.rngs[1], val.prior)
-# scatter3d(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.diff))
+# contour(val.rngs[2], val.rngs[1], val.prior)
+# contour(val.rngs[2], val.rngs[1], val.diffs)
+
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.a))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2], val.a))
+
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,1], val.b))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,2], val.b))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,2], val.b))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,1], val.b))
+
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,1], val.c))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,2], val.c))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,2], val.c))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,1], val.c))
+
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.p))
+contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2], val.p))
