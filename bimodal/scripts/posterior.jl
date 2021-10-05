@@ -10,6 +10,7 @@ using ForwardDiff
 using NLsolve
 using DataFrames
 using Parameters
+using JLSO, Dates
 
 # Payoff shocks
 function signal(f, Σj)
@@ -398,7 +399,7 @@ end
 # end
 
 # The loop!
-function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothing)
+function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothing, x=nothing)
     # Extract parameters
     @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name, ρ, J, K, seed, do_seed = params
     
@@ -419,7 +420,7 @@ function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothin
     n_assets = length(f)
 
     # Calculate supply
-    x = rand(MvNormal(x_bar, Σ_x))
+    x = isnothing(x) ? rand(MvNormal(x_bar, Σ_x)) : x
 
     # Generate signals
     # Σj = [rand_attention(n_assets, 1) for _ in 1:J]
@@ -620,9 +621,12 @@ function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothin
         tt,
         # g!,
         init_θ, #randn(length(init_θ)),
+        # SimulatedAnnealing(),
         # Newton(linesearch = BackTracking(order=2)),
-        # LBFGS(),
-        # autodiff=:forwarddiff,
+        # LBFGS(linesearch = BackTracking(order=2)),
+        LBFGS(),
+        # NewtonTrustRegion(),
+        autodiff=:forwarddiff,
         Optim.Options(iterations=100_000)
     )
 
@@ -740,7 +744,7 @@ function equilibrium(params; finalplot = true, store = true, f=nothing, s=nothin
 end
 
 # Set up parameters
-all_j = 1_00
+all_j = 100
 all_k = 10
 
 ## Baseline, nothing interesting
@@ -921,13 +925,22 @@ function eq_grid(params; steps=100)
             ff = vcat(it[i,j]...)
             push!(prior, pdf(m, ff))
             try
-                _, (a,b,c), p = equilibrium(two_meanshift, store=false, finalplot=false, f=ff)
+                _, (a,b,c), p = equilibrium(
+                    two_meanshift, 
+                    store=false, 
+                    finalplot=false, 
+                    f=ff,
+                    x=params.x_bar
+                )
                 push!(as, a)
                 push!(bs, b)
                 push!(cs, c)
                 push!(ps, p)
                 push!(diffs, ff - p)
             catch e
+                if e isa InterruptException
+                    rethrow(e)
+                end
                 println(e)
                 push!(as, missing)
                 push!(bs, missing)
@@ -938,29 +951,33 @@ function eq_grid(params; steps=100)
         end
     end
 
-    return (rngs = rngs, a=as |> rs, b=bs |> rs, c=cs |> rs, p=ps |> rs, diff=diffs |> rs, prior=prior |> rs)
+    val = (rngs = rngs, a=as |> rs, b=bs |> rs, c=cs |> rs, p=ps |> rs, diff=diffs |> rs, prior=prior |> rs)
+
+    js_path = "jlso/$(params.sim_name)/"
+    !ispath(js_path) && mkpath(js_path)
+    JLSO.save(joinpath(js_path, "eq_grid-$(now()).jlso"), :values => js_path)
+    return val
 end
 
-val = eq_grid(two_meanshift)
+function plot_vals(params, val; num_levels=1_000)
+    ps = "plots/params/$(params.sim_name)/"
+    !ispath(ps) && mkpath(ps)
+    savefig(contour(val.rngs[2], val.rngs[1], val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/prior.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a1.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a2.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b11.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b12.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c11.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c22.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c12.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c21.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p1.png")
+    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p2.png")
+end
 
-# ps = map(z -> tuple(z...), val.p)
-# diffs = map(z -> tuple(z...), val.diff)
-
-# contour(val.rngs[2], val.rngs[1], val.prior)
-# contour(val.rngs[2], val.rngs[1], val.diffs)
-
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.a))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2], val.a))
-
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,1], val.b))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,2], val.b))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,2], val.b))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,1], val.b))
-
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,1], val.c))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,2], val.c))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1,2], val.c))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2,1], val.c))
-
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[1], val.p))
-contour(val.rngs[1], val.rngs[2], map(x -> ismissing(x) ? missing : x[2], val.p))
+for p in param_set
+    val = eq_grid(p, steps = 10)
+    plot_vals(p, val)
+end 

@@ -53,7 +53,15 @@ url=false]{biblatex}
 
 \section{Introduction}
 
-A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. Signals usuall\footnote{A noteworthy exception is \textcite{breon-drish_existence_2015}, which allows signals and payoff distributions to vary to a greater degree -- namely, that the density of the payoff conditional on a private signal ($P(\tilde f \mid \eta_j)$, in terms of \textcite{kacperczyk_rational_2016}) be a member of the exponential family of distributions.} take the form of the true payoff with additive Gaussian nois, $\eta_j = \tilde f + \epsilon_j$, for investor $j$, signal $\eta_j$, payoff vector $\tilde f$, and noise term $\epsilon_j$. 
+A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. 
+
+The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that investors will rationally allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may understate how dramatic the effect of information choice can be when investors are confronted with complex economic environments.
+
+Consider the example of two firms and their stocks. Company A is a domestic utility company. It has stable cashflows and is generally resistant to the business cycle. Company B is a riskier global trade venture which has state-contingent payoffs. In the good state, a foreign firm's economy experiences a boom, increasing Firm B's performance significantly. Firm B's payoffs are higher in the good state and may have different payoff variance. In the bad state, the foreign economy goes into recession, and Firm B has significantly lower payoffs with an arbitrarily different payoff variance. Assume that Firm A's payoff distribution varies only slightly between these two states, due to the small effects on domestic and international consumption that could lightly tilt the firm's performance. Investors are unable to accurately perceive the state of the foreign economy in a timely manner and must infer the state from signals about payoffs for Firms A \& B.
+
+If an investor who wishes to forecast asset performance can only allocate a finite amount of attention between these two firms, which firm should they choose? If the investor allocates most of their attention to Firm A, they will receive a large and potentially precise signal about Firm A's payoffs but at the cost of little to no information about whether the economy is likely to be in the good state or the bad state. The question is a non-trivial one to answer, as investors make an ex-ante decision about which firms to assess, and then must choose some portfolio after observing information about each firm.
+
+The information and portfolio choice problems essentially reduce to a single question: how useful is knowledge about the state? First, the usefulness of state knowledge depends on the choices of other investors. Prices can be used to infer the information sets of other investors (\textcite{grossman_existence_1977}). Second, the usefulness of state information depends critically on how different the states are in their conditional densities. If the good state and bad state are extremely different, it may pay for an investor to be asymmetrically informed about state even if they are less informed about specific payoffs.
 
 I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
 
@@ -101,10 +109,10 @@ Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mi
 
 \noindent Gaussian mixture distributions have the conceptual benefit of moving payoffs outside the traditional exponential family of distributions. In principle, a mixture model can approximate any complex joint density as the number of components increase (\cite{nguyen_approximations_2019}). I maintain only two components as a proof-of-concept, though much of my analysis expands easily to an arbitrary number of Gaussian components. Additionally, many of the posterior distributions are only marginally more complex than when using traditional normal or log-normal distributions.
 
-\begin{figure}
-    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
-    \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
-\end{figure}
+% \begin{figure}
+%     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
+%     \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
+% \end{figure}
 
 As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting without minor modifications. Namely, the distribution of $f$ is unconditionally non-Gaussian. Fortunately, the Gaussian mixture distribution I pay off benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results thus benefit from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
 
@@ -231,7 +239,7 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
     \end{bmatrix}
 \end{align*}
 
-\noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$.
+\noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$ conditional on a particular draw of payoffs $f$ and supply shocks $x$.
 
 \todo{Derive the joint density of prices}
 
@@ -259,13 +267,23 @@ The appendix\todo{Add to appendix} shows that the quantity $q_j$ that solves (\r
 
 \noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only real difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the means and variances are weighted by the posterior state probabilities and summed. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
 
-I start by defining several types of economies a
+I start by defining several types of economies and solving prices conditional on the mean and covariance relationships of each economy. The four types I have cover the qualitative space of two-state economies, in that payoffs differ two states by the combination of means, variances, and correlations. Figure \ref{fig:priors} plots the joint density of payoffs for each economy.
 
+\begin{itemize}
+    \item \textbf{Economy 1: the baseline}. The baseline economy is a simple multivariate Gaussian economy to which the other economies are compared. It is equivalent to the case studied in \textcite{kacperczyk_rational_2016}. Assets one and two have unit payoffs and an identity covariance matrix in both states, so that both states are identical.
+    
+    \item \textbf{Economy 2: mean shift}. The mean shift economy allows the mean payoff for asset 2 to move from $+2$ (good state) to $-2$ (bad state), while asset 1 has the same mean payoff of $1$ in each state. The covariance matrix of payoffs is the identity matrix in both states.
+
+    \item \textbf{Economy 3: mean and variance shift}. Economy 3 is intended to capture cases where an asset varies in boht mean and variance between states. Asset 2 has a mean of $+2$ and a variance of $1$ in the good state, and a mean of $-2$ and a variance of $5$ in the bad state. Asset 1 remains a state-independent asset.
+    
+    \item \textbf{Economy 4: mean, variance, and correlation shift}. Economy 4 makes asset 1 and 2 payoffs positively correlated in the bad state. Asset two maintains its $+2/-2$ means and $1/5$ variances.
+\end{itemize}
+    
 \begin{figure}
     \centering
     \begin{subfigure}{0.4\textwidth}
         \includegraphics[width=\textwidth]{../plots/economy/baseline/prior.png}
-    \end{subfigure}
+        \end{subfigure}
     \begin{subfigure}{0.4\textwidth}
         \includegraphics[width=\textwidth]{../plots/economy/a2-mean-shift/prior.png}
     \end{subfigure}
