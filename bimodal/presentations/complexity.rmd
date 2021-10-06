@@ -1,0 +1,136 @@
+---
+title: "Information choice and economic complexity"
+subtitle: ""
+author: "Cameron Pfiffer"
+institute: "University of Oregon"
+date: "October 1st, 2021"
+output:
+  beamer_presentation:
+    keep_tex: yes
+  ioslides_presentation:
+    css: tufte-css-gh-pages/tufte.css
+header-includes:
+ - \usepackage{/home/cameron/Dropbox/Presentations/cbeamer/cstyle}
+ - \usepackage{booktabs}
+ - \usepackage{graphicx}
+ - \usepackage[labelformat=empty]{caption}
+ - \usepackage{dcolumn}
+ - \usepackage{anyfontsize}
+ - \usepackage{adjustbox}
+ - \usepackage[T1]{fontenc}
+ - \usepackage{relsize}
+ - \usepackage{bm}
+ - \usepackage{physics}
+ - \usepackage{booktabs}
+ - \usepackage{longtable}
+ - \usepackage{array}
+ - \usepackage{multirow}
+ - \usepackage{wrapfig}
+ - \usepackage{float}
+ - \usepackage{colortbl}
+ - \usepackage{pdflscape}
+ - \usepackage{tabu}
+ - \usepackage{threeparttable}
+ - \usepackage{threeparttablex}
+ - \usepackage[normalem]{ulem}
+ - \usepackage{makecell}
+ - \usepackage{xcolor}
+ - \usepackage{hhline}
+ - \usepackage{adjustbox}
+ - \usepackage{soul}
+# bibliography: ../references.bib
+# csl: ../journal-of-finance.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+# library(ggplot2)
+# library(tidyverse)
+# library(lubridate)
+# library(ggthemes)
+# library(strucchange)
+# library(xts)
+```
+
+```{r fig.align='center',  out.width='0.9\\paperheight'}
+# magick::image_transparent(magick::image_read("table8.png"), 'white', fuzz = 0)
+```
+
+# Research question
+
+## Research question
+
+How should you choose what information to analyze when the economy is ex-ante complicated?
+
+Alternatively, how much information is it \blue{rational to ignore}?
+
+## Information choice
+
+\red{Information choice} is the study of how investors choose what things they wish to know about.
+
+In asset pricing, we like to think about how information choice impacts things like
+
+- Expected returns
+- Risk premia
+- Welfare (?)
+
+I use "information choice" and "attention" synonymously.
+
+## My hypothesis
+
+I am trying to find out whether "complex" economies cause the basic findings of information choice models to fall apart.
+
+Common findings:
+
+- When a "common component" of payoffs or returns becomes more volatile, more attention goes to the common component. Common component here might be the business cycle or market returns.
+- Increased attention reduces excess volatility, while decreased attention increases excess volatility.
+- Prices are informative about payoffs because prices are a function of investor attention.
+
+## Hypothesis 1
+
+Investors allocate attention in a way that can systematically mislead them about the state of the economy.
+
+## Hypothesis 2
+
+Attention allocation can increase or decrease excess volatility/returns in a biased way.
+
+## Hypothesis 3
+
+Prices may be \red{very informative} or \blue{not informative at all}, since investors with different information can interperet prices radically differently.
+
+## My hypothesis
+
+In short -- the \textbf{findings of information choice models might not be as clear in complex economies}!
+
+## Brief literature review
+
+- Theory
+  - Kacperczyk et al. (2016) is the model I follow closest, though I do away with a lot of their simplifying assumptions.
+  - Peng and Xiong (2006) looks at category learning and attention.
+  - Slow learning and model ambiguity can explain all kinds of variance phenomena (Ghaderi et al., 2021)
+- Empirics
+  - Kholhas and Walther (2021) asymmetric attention to procyclical variables can explain underreaction + extrapolation.
+  - Cziraki et al. (2021) local/nonlocal bias in attention allocation causes abnormalities in returns.
+  - Hirshleifer and Sheng (2021) shows that macro news triggers higher attention in firm-level securities.
+
+# Complexity
+
+## Complexity
+
+```{r fig.align='center',  out.width='0.9\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/prior.png"), 'white', fuzz = 0)
+```
+
+Traditional models of information choice use unimodal joint densities with good properties. The above is the case used in Kacperczyk et al. (2016).
+
+## Complexity
+
+```{r fig.align='center',  out.width='0.9\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/prior.png"), 'white', fuzz = 0)
+```
+
+Gaussian variables are highly compact in any dimension, in that they are "spherical". They have an extremely small isoperimetric inequality (you can put a dense small "circle" around them).
+
+## Complexity
+
+The simplicity of the Gaussian distribution can cause a _signal_ about a payoff to be easily inferred.

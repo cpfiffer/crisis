@@ -297,10 +297,187 @@ I start by defining several types of economies and solving prices conditional on
     \label{fig:priors}
 \end{figure}
 
+At present, I am most interested in how different attention allocation impacts investor beliefs and asset prices. I fix attention allocation and observe the time-2 portfolio construction problem faced by investors. Later sections will allow agents to optimize their information choices. I generate $J$ agents, half of which allocate 90\% of their attention to the safer asset 1, and the other half allocates 90\% of their attention to the riskier asset 2. Next, I assign each agent a private signal $\eta_j$ based on their attention allocation. I fix the stochastic supply to its average ($x = \bar x$) to more precisely observe equilibrium conditions.
 
+Prices are determined through numerical minimization of the squared difference of the economy from market clearing. Denote the total quantity demanded by investors at price $p$ as $\mathbf{q}(p) = q_1(p) + q_2(p) + \dots q_J(p)$.
+
+\begin{mini}
+    {A,B,C}{\big(\mathbf{q}(p) - x\big)'\big(\mathbf{q}(p) - x\big)}
+    {\label{eq:numerical-opt}}{}
+    \addConstraint{p}{= A + B f + C x}
+\end{mini}
+
+The optimizer will conjecture price parameters $A$, $B$, and $C$, and then calculate all investor's posterior beliefs about the means, variances, and state probabilities conditional on the particular draw of price parameters. If the price parameters are such that net quantities $\mathbf{q}(p) - x$ is highly positive or negative, the conjectured price function cannot be the market clearing price as there exists some assets which are not held by anyone. I use the \todo{Find cite for LBFGS}LBFGS algorithm with automatic differentiation for the gradient\footnote{It has historically been more common to use finite difference gradients, but advances in computation have enabled the faster and more accurate automatic differentiation. \hl{cite Chris' paper?}}. Typically, the numerical approach yields a squared quantity disjoint around $1e^{-22}$, which is approximately exact for most numerical purposes.
 
 \appendix
 \pagebreak
+
+\section{Figures}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/entropy_lower.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/entropy_lower.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/entropy_lower.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/entropy_lower.png}
+    \end{subfigure}
+    \caption{Distributions of the lower bound on posterior entropy for different observations of $f$.}
+    \label{fig:entropy_lower}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/entropy_upper.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/entropy_upper.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/entropy_upper.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/entropy_upper.png}
+    \end{subfigure}
+    \caption{Distributions of the upper bound on posterior entropy for different observations of $f$.}
+    \label{fig:entropy_upper}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/b11.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/b11.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/b11.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/b11.png}
+    \end{subfigure}
+    \caption{Distributions of payoff coefficient matrix $B_{1,1}$ for different observations of $f$.}
+    \label{fig:b11}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/b22.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/b22.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/b22.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/b22.png}
+    \end{subfigure}
+    \caption{Distributions of payoff coefficient matrix $B_{2,2}$ for different observations of $f$.}
+    \label{fig:b22}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/b12.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/b12.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/b12.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/b12.png}
+    \end{subfigure}
+    \caption{Distributions of payoff coefficient matrix $B_{1,2}$ for different observations of $f$.}
+    \label{fig:b12}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/disagreement.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/disagreement.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/disagreement.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/disagreement.png}
+    \end{subfigure}
+    \caption{Distributions of disagreement ($\sum \hat s_j^2$) for different observations of $f$.}
+    \label{fig:disagreement}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/p1.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/p1.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/p1.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/p1.png}
+    \end{subfigure}
+    \caption{Distributions of the asset 1 price for different observations of $f$.}
+    \label{fig:p1}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/p2.png}
+        \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/p2.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/p2.png}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/p2.png}
+    \end{subfigure}
+    \caption{Distributions of the asset 2 price for different observations of $f$.}
+    \label{fig:p2}
+\end{figure}
+
+
+
+% \begin{figure}
+%     \centering
+%     \begin{subfigure}{0.4\textwidth}
+%         \includegraphics[width=\textwidth]{../plots/params/baseline/entropy_upper.png}
+%         \end{subfigure}
+%     \begin{subfigure}{0.4\textwidth}
+%         \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/entropy_upper.png}
+%     \end{subfigure}
+%     \begin{subfigure}{0.4\textwidth}
+%         \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/entropy_upper.png}
+%     \end{subfigure}
+%     \begin{subfigure}{0.4\textwidth}
+%         \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/entropy_upper.png}
+%     \end{subfigure}
+%     \caption{Distributions of the upper bound on posterior entropy for different observations of $f$.}
+%     \label{fig:entropy_upper}
+% \end{figure}
 
 \section{Mixture model variance}
 
