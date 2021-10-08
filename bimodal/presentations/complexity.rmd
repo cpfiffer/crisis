@@ -164,6 +164,12 @@ What if payoffs were more "complicated"? Pictured is the daily bond/equity obser
 ## Some hypothetical payoff densities
 
 ```{r fig.align='center',  out.width='0.8\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/economy/a2-var-shift/prior.png"), 'white', fuzz = 0)
+```
+
+## Some hypothetical payoff densities
+
+```{r fig.align='center',  out.width='0.8\\paperheight'}
 magick::image_transparent(magick::image_read("../plots/params/a2-meanvar-shift/prior.png"), 'white', fuzz = 0)
 ```
 ## The banana
