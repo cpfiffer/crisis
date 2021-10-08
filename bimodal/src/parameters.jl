@@ -1,5 +1,5 @@
 # Set up parameters
-all_j = 100
+all_j = 1_000
 all_k = 10
 
 ## Baseline, nothing interesting
@@ -141,10 +141,10 @@ morecorr_meanvar = (
 param_set = [
     baseline_params,
     two_meanshift,
-    two_varshift,
+    # two_varshift,
     two_meanvarshift,
-    morecorr,
-    lesscorr,
-    morecorr_mean,
+    # morecorr,
+    # lesscorr,
+    # morecorr_mean,
     morecorr_meanvar
 ]

@@ -31,6 +31,9 @@ density(x)
 density!(y, title="Marginals")
 savefig("plots/banana-marginals.png")
 
+cornerplot(hcat(x, y))
+savefig("plots/banana-pair.png")
+
 N = 10_000
 m1 = [0,2]
 m2 = [2,0]

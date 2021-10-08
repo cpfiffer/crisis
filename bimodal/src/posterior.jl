@@ -12,6 +12,7 @@ using DataFrames
 using Parameters
 using JLSO, Dates
 using CSV
+using FiniteDiff
 
 include("parameters.jl")
 
@@ -240,7 +241,7 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, pl
             scatter!(subplot, [(η[2], η[1])], label="Personal signal", legend=false)
         end
 
-        pl = plot(plot1, plot2, dpi=180)
+        pl = plot(plot1, plot2)
         !ispath("plots/individuals/$sim_name/") && mkpath("plots/individuals/$sim_name/")
         savefig("plots/individuals/$sim_name/$person.png")
         # sleep(0.1)
@@ -643,6 +644,10 @@ function equilibrium(
             Optim.Options(iterations=100_000)
         )
     catch e
+        if e isa InterruptException
+            rethrow(e)
+        end
+
         println(e)
         println("Retrying with backtracking line search...")
         result = optimize(
@@ -671,7 +676,7 @@ function equilibrium(
         )
     end
 
-    println(" result: $(result.minimum)")
+    # println(" result: $(result.minimum)")
     actual = target(result.minimizer, verbose=finalplot, plotting=finalplot, store=store)
     mats = price_matrices(result.minimizer, n_assets)
     eq_price = mats[1] + mats[2] * f + mats[3] * x
@@ -681,7 +686,12 @@ function equilibrium(
         if store 
             df = DataFrame(actual[2])
             if finalplot
-                sz = (1200, 1200)
+                sz = (500, 300)
+                all_dpi = 180
+                all_lines = 4
+                # args = (size=sz, dpi=all_dpi, linewidth=all_lines)
+                # args = (size=sz, dpi=all_dpi, linewidth=all_lines)
+
                 # Do economy plotting
                 !ispath("plots/economy/$sim_name/") && mkpath("plots/economy/$sim_name/")
 
@@ -689,35 +699,35 @@ function equilibrium(
                 bounds = 5:0.01:15
                 mm = MixtureModel([g1, g2], true_s)
                 zs = [pdf(mm, [x,y]) for x in bounds, y in bounds]
-                contour(bounds, bounds, zs, title="Prior payoff density, $sim_name", xlabel="Asset 2", ylabel="Asset 1")
+                contour(bounds, bounds, zs, title="Prior density, $sim_name", xlabel="Asset 2", ylabel="Asset 1")
                 savefig("plots/economy/$sim_name/prior.png")
 
                 # Plot s_hat
-                density(df.s_hat, group=df.group, title="Distribution of s_hat", size=sz)
+                density(df.s_hat, group=df.group, title="s_hat", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/s_hat.png")
 
                 # Plot forecast errors
-                density(df.forecast_sse, group=df.group, title="Distribution of forecast SSE", size=sz)
+                density(df.forecast_sse, group=df.group, title="Distribution of forecast SSE", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/forecast_sse.png")
 
                 # Plot expected utility
-                density(df.utility, group=df.group, title="Distribution of E[uj]", size=sz)
+                density(df.utility, group=df.group, title="E[uj]", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/utility.png")
 
                 # Plot expected utility (term 1)
-                density(df.utility_mean, group=df.group, title="Distribution of E[uj], term 1 (mean payoff)", size=sz)
+                density(df.utility_mean, group=df.group, title="Distribution of E[uj], term 1 (mean payoff)", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/utility-1.png")
 
                 # Plot expected utility (term 2)
-                density(df.utility_var, group=df.group, title="Distribution of E[uj], term 2 (variance disutility)", size=sz)
+                density(df.utility_var, group=df.group, title="Distribution of E[uj], term 2 (variance disutility)", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/utility-2.png")
 
                 # Plot expected utility (term 1)
-                density(df.utility_price, group=df.group, title="Distribution of E[uj], term 3 (price disutility)", size=sz)
+                density(df.utility_price, group=df.group, title="Distribution of E[uj], term 3 (price disutility)", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/utility-3.png")
 
                 # Plot ex-ante utility
-                density(df.exante, title="Density of ex-ante", size=sz)
+                density(df.exante, title="Density of ex-ante", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/exante.png")
 
                 # # Plot utility function
@@ -734,39 +744,39 @@ function equilibrium(
 
                 # Plot expected returns
                 plot(
-                    density(map(z -> z[1], df.expected_return), group=df.group, title="Asset 1"),
-                    density(map(z -> z[2], df.expected_return), group=df.group, title="Asset 2"),
+                    density(map(z -> z[1], df.expected_return), group=df.group, title="Asset 1",size=sz, dpi=all_dpi, linewidth=all_lines),
+                    density(map(z -> z[2], df.expected_return), group=df.group, title="Asset 2",size=sz, dpi=all_dpi, linewidth=all_lines),
                     size=sz
                 )
                 savefig("plots/economy/$sim_name/expected_returns.png")
 
                 # Plot expected variance
                 plot(
-                    density(map(z -> z[1], df.expected_variance), group=df.group, title="Asset 1"),
-                    density(map(z -> z[2], df.expected_variance), group=df.group, title="Asset 2"),
+                    density(map(z -> z[1], df.expected_variance), group=df.group, title="Asset 1", size=sz, dpi=all_dpi, linewidth=all_lines),
+                    density(map(z -> z[2], df.expected_variance), group=df.group, title="Asset 2", size=sz, dpi=all_dpi, linewidth=all_lines),
                     size=sz
                 )
                 savefig("plots/economy/$sim_name/expected_variances.png")
 
                 # Plot quantity
                 plot(
-                    density(map(z -> z[1], df.quantity), group=df.group, title="Distribution of quantity (A1)", size=sz),
-                    density(map(z -> z[2], df.quantity), group=df.group, title="Distribution of quantity (A2)", size=sz),
+                    density(map(z -> z[1], df.quantity), group=df.group, title="(A1)", size=sz, dpi=all_dpi, linewidth=all_lines),
+                    density(map(z -> z[2], df.quantity), group=df.group, title="(A2)", size=sz, dpi=all_dpi, linewidth=all_lines),
                 )
                 savefig("plots/economy/$sim_name/quantity.png")
 
                 # Plot ex-post mus
-                scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat", size=sz)
+                scatter(map(z -> tuple(z...), df.mu), group=df.group, title="Distribution of μ_hat", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/mu_hat.png")
 
                 # Entropy
-                density(df.entropy_upper, group=df.group, title="Distribution of h_u", size=sz)
+                density(df.entropy_upper, group=df.group, title="h_u", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/entropy_u.png")
 
-                density(df.entropy_lower, group=df.group, title="Distribution of h_l", size=sz)
+                density(df.entropy_lower, group=df.group, title="h_l", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/entropy_l.png")
 
-                density(df.kl, group=df.group, title="Distribution of kl", size=sz)
+                density(df.kl, group=df.group, title="kl", size=sz, dpi=all_dpi, linewidth=all_lines)
                 savefig("plots/economy/$sim_name/kl.png")
             end
         end
@@ -787,22 +797,27 @@ function equilibrium(
 end
 
 
-sims = map(p -> p.sim_name => equilibrium(p; finalplot=true, store=true), param_set)
+# sims = map(p -> p.sim_name => equilibrium(p; finalplot=true, store=true), param_set)
 # println("Done, C")
 
 
 # z = equilibrium(two_meanshift, store=false, finalplot=false, f=[0.5,1])
 # _, (a2,b2,c2) = equilibrium(two_meanshift, store=false, finalplot=false, f=[1.0,0.5])
 
-function eq_grid(params; steps=50)
+function eq_grid(params; steps=40)
     !ispath("data/individuals/") && mkpath("data/individuals/")
-    m = prior_mixture(params)
-    draws = rand(m, 10_000)
 
-    mins = minimum(draws, dims=2)
-    maxs = maximum(draws, dims=2)
-    rngs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
-    it = collect(Iterators.product(rngs...))
+    m = prior_mixture(params)
+    N = 1_000_000
+    draws = hcat(rand(m, N))
+    # quantiles = map(q -> quantile(draws[q,:], range(0.01, 0.99, length=steps)), 1:size(draws, 1))
+    dline = div(N, steps)
+
+    mins = map(r -> minimum(sort(draws[r,:])[dline:(N-dline)]), 1:size(draws, 1))
+    maxs = map(r -> maximum(sort(draws[r,:])[dline:(N-dline)]), 1:size(draws, 1))
+    qs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
+    # it = collect(Iterators.product(rngs...))
+    it = collect(Iterators.product(qs...))
 
     as = []
     bs = []
@@ -820,7 +835,7 @@ function eq_grid(params; steps=50)
 
     for i in 1:size(it, 1)
         for j in 1:size(it, 2)
-            print("$i $j $(it[i,j]) $(params.sim_name) ")
+            println("$i $j $(it[i,j]) $(params.sim_name) ")
             ff = vcat(it[i,j]...)
             push!(prior, pdf(m, ff))
             try
@@ -854,6 +869,7 @@ function eq_grid(params; steps=50)
                     push!(dfs, df)
                 end
             catch e
+                rethrow(e)
                 if e isa InterruptException || e isa MethodError || e isa ArgumentError
                     rethrow(e)
                 end
@@ -873,7 +889,8 @@ function eq_grid(params; steps=50)
     end
 
     val = (
-        rngs = rngs, 
+        rngs = qs,
+        pairs=it,
         a=as, 
         b=bs, 
         c=cs, 
@@ -896,32 +913,45 @@ function eq_grid(params; steps=50)
     return val
 end
 
-function plot_vals(params, val; num_levels=50)
+function plot_vals(params, val; num_levels=25)
     ps = "plots/params/$(params.sim_name)/"
     !ispath(ps) && mkpath(ps)
-    savefig(contour(val.rngs[2], val.rngs[1], val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/prior.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a1.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a2.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b11.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b12.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c11.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c22.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c12.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c21.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[1], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p1.png")
-    savefig(contour(val.rngs[2], val.rngs[1], map(x -> ismissing(x) ? missing : x[2], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p2.png")
-    savefig(contour(val.rngs[2], val.rngs[1], val.disagreement, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/disagreement.png")
-    savefig(contour(val.rngs[2], val.rngs[1], val.entropy_lower, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/entropy_lower.png")
-    savefig(contour(val.rngs[2], val.rngs[1], val.entropy_upper, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/entropy_upper.png")
-    savefig(density(map(x -> ismissing(x) ? missing : x[1], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/excess-1.png")
-    savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/excess-2.png")
+
+    xs = val.rngs[2]
+    ys = val.rngs[1]
+    # zs = map(identity, permutedims(reshape(val.prior, size(val.pairs)), [2,1]))
+
+    savefig(contour(ys, xs, val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/prior.png")
+    
+    # Add grid points to prior
+    contour(xs, ys, val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1")
+    gridpoints_x = vec(map(i -> i[2], val.pairs))
+    gridpoints_y = vec(map(i -> i[1], val.pairs))
+    scatter!(gridpoints_x, gridpoints_y)
+    savefig("$ps/prior-grid.png")
+
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a1.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2], val.a), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/a2.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b11.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1,2], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b12.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2,1], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b22.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c11.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c22.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1,2], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c12.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2,1], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c21.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[1], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p1.png")
+    savefig(contour(xs, ys, map(x -> ismissing(x) ? missing : x[2], val.p), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/p2.png")
+    savefig(contour(xs, ys, val.disagreement, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/disagreement.png")
+    savefig(contour(xs, ys, val.entropy_lower, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/entropy_lower.png")
+    savefig(contour(xs, ys, val.entropy_upper, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/entropy_upper.png")
+    savefig(density(map(x -> ismissing(x) ? missing : x[1], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-1.png")
+    savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-2.png")
 
     for k in 1:2
         for l in 1:2
-            savefig(density(map(x -> ismissing(x) ? missing : x[k,l], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/b$(k)$(l)_marginal.png")
-            savefig(density(map(x -> ismissing(x) ? missing : x[k,l], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/c$(k)$(l)_marginal.png")
+            savefig(density(map(x -> ismissing(x) ? missing : x[k,l], val.b), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/b$(k)$(l)_marginal.png")
+            savefig(density(map(x -> ismissing(x) ? missing : x[k,l], val.c), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/c$(k)$(l)_marginal.png")
         end
     end
 
@@ -931,7 +961,7 @@ function plot_vals(params, val; num_levels=50)
     # end
 end
 
-# for p in param_set
-#     val = eq_grid(p)
-#     plot_vals(p, val)
-# end 
+for p in param_set
+    val = eq_grid(p)
+    plot_vals(p, val)
+end 

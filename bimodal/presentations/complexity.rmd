@@ -3,7 +3,7 @@ title: "Information choice and economic complexity"
 subtitle: ""
 author: "Cameron Pfiffer"
 institute: "University of Oregon"
-date: "October 1st, 2021"
+date: "October 8th, 2021"
 output:
   beamer_presentation:
     keep_tex: yes
@@ -17,6 +17,7 @@ header-includes:
  - \usepackage{dcolumn}
  - \usepackage{anyfontsize}
  - \usepackage{adjustbox}
+ - \usepackage{optidef}
  - \usepackage[T1]{fontenc}
  - \usepackage{relsize}
  - \usepackage{bm}
@@ -41,6 +42,11 @@ header-includes:
 # bibliography: ../references.bib
 # csl: ../journal-of-finance.csl
 ---
+
+\newcommand{\Gauss}{\mathcal{N}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\E}{\text{E}}
+\newcommand{\argmax}{\text{argmax}}
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
@@ -86,21 +92,29 @@ Common findings:
 - Increased attention reduces excess volatility, while decreased attention increases excess volatility.
 - Prices are informative about payoffs because prices are a function of investor attention.
 
-## Hypothesis 1
+## Hypothesis 1: Price informativeness
 
-Investors allocate attention in a way that can systematically mislead them about the state of the economy.
+> The literature: Prices give investors useful information about payoffs.
 
-## Hypothesis 2
+Prices may be \blue{not informative at all}, since investors with different information can interperet prices radically differently.
 
-Attention allocation can increase or decrease excess volatility/returns in a biased way.
+Importantly, this could happen as the entropy of prior payoffs goes _down_!
 
-## Hypothesis 3
+## Hypothesis 2: Biased expectations
 
-Prices may be \red{very informative} or \blue{not informative at all}, since investors with different information can interperet prices radically differently.
+> The literature: Gaussian payoffs -- all investors are reasonably good at guessing payoffs.
+
+Investors allocate attention in a way that can systematically mislead them about the state of the economy. I.e. a large mass of investors will be _very_ disappointed (or pleased) when they find out the true payoffs.
+
+## Hypothesis 3: Returns and volatility
+
+> The literature: More attention means less volatility and lower expected returns.
+
+Might not be the case in situations with large amounts of disagreement! Even if more attention is given to an asset, disagreement could drive \red{up} expected returns and excess volatility.
 
 ## My hypothesis
 
-In short -- the \textbf{findings of information choice models might not be as clear in complex economies}!
+In short -- the __findings of information choice models might flip in complex economies__!
 
 ## Brief literature review
 
@@ -129,8 +143,679 @@ Traditional models of information choice use unimodal joint densities with good 
 magick::image_transparent(magick::image_read("../plots/params/baseline/prior.png"), 'white', fuzz = 0)
 ```
 
-Gaussian variables are highly compact in any dimension, in that they are "spherical". They have an extremely small isoperimetric inequality (you can put a dense small "circle" around them).
+Gaussian variables are the highest entropy distribution for a given mean and standard deviation, meaning they are the least "structured".
 
 ## Complexity
 
-The simplicity of the Gaussian distribution can cause a _signal_ about a payoff to be easily inferred.
+```{r fig.align='center',  out.width='0.9\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/prior.png"), 'white', fuzz = 0)
+```
+
+Less structure means a boring blob of investors are generally happy with any minimum-variance outcome!
+
+## Complexity
+
+```{r fig.align='center',  out.width='0.9\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/joint-density.png"), 'white', fuzz = 0)
+```
+
+What if payoffs were more "complicated"? Pictured is the daily bond/equity observed returns from 2000-2021.
+
+## Some hypothetical payoff densities
+
+```{r fig.align='center',  out.width='0.8\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/a2-meanvar-shift/prior.png"), 'white', fuzz = 0)
+```
+## The banana
+
+```{r fig.align='center',  out.width='0.5\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/banana.png"), 'white', fuzz = 0)
+```
+
+## The banana's marginal densities
+
+```{r fig.align='center',  out.width='0.5\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/banana-marginals.png"), 'white', fuzz = 0)
+```
+
+Note that the marginals look pretty close to actual stock return densities, even though the joint distribution is strange.
+
+## The banana takeaway
+
+```{r fig.align='center',  out.width='0.5\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/banana.png"), 'white', fuzz = 0)
+```
+
+__How do you allocate attention__ if you know you have a complicated joint density?
+
+# The framework
+
+## The framework
+
+I mostly follow Kacperczyk et al. (2016), which adds attention to the multiasset noisy rational expectations model of Admati (1985).
+
+## States of the economy
+
+The economy has a _state_, denoted with $s$. A _state_ describes the mean and variance of the payoffs in that state, i.e. $\mu_H$ is the mean payoff in the good state, while $\mu_L$ is the mean payoff in the bad state.
+
+Investors do not observe the state but must infer it.
+
+## States of the economy
+
+The density function for the state is:
+
+$$
+P(s) = \begin{cases}
+    \pi & \text{ if } s = H \\
+    1-\pi & \text{ if } s = L \\
+\end{cases}
+$$
+
+## The assets
+
+We have $n$ assets that have payoffs
+
+$$
+f = \mu_s + \epsilon
+$$
+
+where
+
+\begin{align}
+    f_i &= \mu_{i,s} + z_i\\
+    z &\mid s = [z_1,z_2, \dots, z_n]' \sim \mathcal{N}(0, \Sigma_s) \\
+    f &\mid s \sim \mathcal{N}(\mu_{s}, \Sigma_s)
+\end{align}
+
+## What is this density?
+
+Formally, this is what is known as a \blue{Gaussian mixture model}. Gaussian mixture models can be used to approximate any joint density\footnote{If you have ever used kernel density estimation, this is technically what is happening behind the scenes.}
+
+The density function is
+
+$$
+P(f) \sim \pi \mathcal{N}(f \mid \mu_H, \Sigma_H) + (1-\pi) \mathcal{N} (f \mid \mu_L, \Sigma_L)
+$$
+
+## Asset supply
+
+The $n$ assets have an uncertain supply. Sometimes noise traders show up to trade, so the traders cannot perfectly forecast how many shares need to be net bought or sold. 
+
+Denote this stochastic supply with
+
+$$
+x \sim \mathcal{N}(\overline x, \Sigma_x)
+$$
+
+## Timing
+
+1. Investors allocate \red{attention} and then observe signals, if they are informed.
+2. Investors choose \red{asset portfolios} and the market clears.
+3. Everyone receives the final payoff $q'_j f$.
+
+## The investors
+
+There is a unit mass of investors $j \in [0,1]$. Each investor has CARA utility of the form
+
+$$
+U_{j2} = E_j[\exp{-\rho W_j}]
+$$
+
+for terminal wealth 
+
+$$
+W_j = r W_0 + q'_j (f - pr)
+$$
+
+where $W_0$ is initial wealth, $q'_j$ is the asset quantity purchased, $f$ is the realized stochastic payoffs, and $p$ is the asset price vector. The risk-free rate of $r$ is normalized to 1 to reduce notation.
+
+## Private signals
+
+Some portion of investors receive \red{private signals} of the true payoff $f$. Their signals take the form
+
+\begin{align}
+    \eta_j &\sim \Gauss(f, \Sigma_{\eta,j}), \\
+    \text{ or } \eta_j &= f + \epsilon_j, \quad \epsilon_j \sim \Gauss(0, \Sigma_{\eta_j})
+\end{align}
+
+## Private signals
+
+Investors can control how precise this signal is at the beginning of the game by allocating attention.
+
+$$
+\Sigma_{\eta_j} = \begin{bmatrix}
+  K_{1j}^{-1} & 0 & \dots & 0 \\
+  0 & K_{2j}^{-1} & \dots & 0 \\
+  0 & 0 & \ddots & 0 \\
+  0 & 0 & 0 & K_{nj}^{-1} \\
+\end{bmatrix}
+$$
+
+Subject to the constraints that $K_ij \ge 0$ (no forgetting) and $\sum K_ij \le K$ (finite attention).
+
+## The information choice problem
+
+The information choice problem is the one I want to focus on, but it's hard to get to!
+
+Ultimately, I want to know the gradients of the attention allocation function
+
+$$
+\Sigma^*_{\eta_j}(\pi, \mu_H, \mu_L, \Sigma_H, \Sigma_L)
+$$
+
+with respect to the prior payoff parameters.
+
+## Portfolio choice
+
+The portfolio choice problem is quite easy. Assume that investors have their signals $\eta_j$ and can see prices $p$. Then they must maximize expected terminal utility:
+
+\begin{maxi}
+    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
+    {\label{eq:learning-opt}}{}
+    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
+\end{maxi}
+
+## Portfolio choice
+
+Solving this yields the (maybe familiar) exact quantity:
+
+\newcommand{\shat}{\hat s_j}
+\newcommand{\hShat}{\hat \Sigma_{H,j}}
+\newcommand{\lShat}{\hat \Sigma_{L,j}}
+\newcommand{\hMhat}{\hat \mu_{H,j}}
+\newcommand{\lMhat}{\hat \mu_{L,j}}
+\begin{align}
+    q_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat\big)
+\end{align}
+
+for posterior state beliefs after observing $p$ and $\eta_j$.
+
+
+## Prices
+
+Prices are the tricky bit in this economy. In other models, you can conjecture a linear price as a function of the true payoffs $f$ and the supply $x$:
+
+$$
+p = A + B f + C x
+$$
+
+Kacperczyk et al. (2016) and others have exact forms for these matrices.
+
+## Prices
+
+I don't! It's been very difficult even with a simple density to get closed form prices, partly because everyone's posterior beliefs about the state ($\shat$) move around with $f$.
+
+This means that prices $p$ are linear in $f$ and $x$, but the parameters $A$, $B$, and $C$ are non-linear functions of $f$ and $x$. 
+
+Tricky!
+
+## Solving for prices numerically
+
+I can solve for prices numerically by conjecturing $A$, $B$, and $C$ such that the market clearing condition is satisfied:
+
+$$
+\int_j q_j(p) = x
+$$
+
+# Example economies
+
+## Four economies
+
+Two asset economies for easy plotting. I set $\pi = 1/2$ and $K=10$ in all cases.
+
+\begin{table}
+\begin{tabular}{ccccc}
+  \toprule
+  & $\mu_H$ & $\mu_L$ & $\Sigma_H$ & $\Sigma_L$ \\
+  \midrule
+  1 & $[10,10]$ & $[10,10]$ & $I$ & $I$ \\
+  2 & $[10,12]$ & $[10,8]$ & $I$ & $I$ \\
+  3 & $[10,12]$ & $[10,8]$ & $I$ & $[1, 0; 0, 5]$ \\
+  4 & $[10,12]$ & $[10,8]$ & $I$ & $[2, 0.4; 0.4, 2]$ \\
+\end{tabular}
+\end{table}
+
+## Prior payoffs
+```{r fig.align='right',  out.width='0.5\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/economy/baseline/prior.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-mean-shift/prior.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-meanvar-shift/prior.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/more-corr-meanvarshift/prior.png"), 'white', fuzz = 0)
+```
+
+## The investors
+
+To examine how disparate attention impacts each of these economies, I force half the investors to place $90\%$ of their attention on asset 1, and the other half to focus $90\%$ on asset 2.
+
+## Baseline (investor posterior)
+
+```{r fig.align='center',  out.width='0.4\\paperwidth', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/individuals/baseline/1.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/individuals/baseline/51.png"), 'white', fuzz = 0)
+```
+
+## Mean shift (investor posterior)
+
+```{r fig.align='center',  out.width='0.4\\paperwidth', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/individuals/a2-mean-shift/1.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/individuals/a2-mean-shift/51.png"), 'white', fuzz = 0)
+```
+
+
+## Mean and variance shift (investor posterior)
+
+```{r fig.align='center',  out.width='0.4\\paperwidth', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/individuals/a2-meanvar-shift/1.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/individuals/a2-meanvar-shift/51.png"), 'white', fuzz = 0)
+```
+
+
+## Mean, correlation, and variance shift (investor posterior)
+
+```{r fig.align='center',  out.width='0.4\\paperwidth', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/individuals/more-corr-meanvarshift/1.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/individuals/more-corr-meanvarshift/51.png"), 'white', fuzz = 0)
+```
+
+## What do investors think expected returns are ($E[f/p - 1]$)?
+
+```{r fig.align='center',  out.width='0.4\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/economy/baseline/expected_returns.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-mean-shift/expected_returns.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-meanvar-shift/expected_returns.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/more-corr-meanvarshift/expected_returns.png"), 'white', fuzz = 0)
+```
+
+## What do investors think the state is ($\shat$)?
+
+```{r fig.align='center',  out.width='0.4\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/economy/baseline/s_hat.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-mean-shift/s_hat.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-meanvar-shift/s_hat.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/more-corr-meanvarshift/s_hat.png"), 'white', fuzz = 0)
+```
+
+## How much disagreement is there ($\text{Var}[\shat]$)?
+
+```{r fig.align='center',  out.width='0.4\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/disagreement.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/a2-mean-shift/disagreement.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/a2-meanvar-shift/disagreement.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/more-corr-meanvarshift/disagreement.png"), 'white', fuzz = 0)
+```
+
+
+## What do investors buy or sell ($q_j^*$)?
+
+```{r fig.align='center',  out.width='0.4\\paperwidth', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/economy/baseline/quantity.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-mean-shift/quantity.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-meanvar-shift/quantity.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/more-corr-meanvarshift/quantity.png"), 'white', fuzz = 0)
+```
+
+## Who learns the most ($KL(\hat f_j \mid\mid f)$)?
+
+```{r fig.align='center',  out.width='0.4\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/economy/baseline/kl.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-mean-shift/kl.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/a2-meanvar-shift/kl.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/economy/more-corr-meanvarshift/kl.png"), 'white', fuzz = 0)
+```
+
+## In what states are investors the most uncertain ($\hat H(\hat f_j \mid\mid f)$)?
+
+```{r fig.align='center',  out.width='0.4\\paperheight', fig.show='hold'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/entropy_upper.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/a2-mean-shift/entropy_upper.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/a2-meanvar-shift/entropy_upper.png"), 'white', fuzz = 0)
+magick::image_transparent(magick::image_read("../plots/params/more-corr-meanvarshift/entropy_upper.png"), 'white', fuzz = 0)
+```
+
+# Prices
+
+## Prices
+
+My estimation procedure estimates the matrices $A$, $B$, and $C$:
+
+$$
+p = A + B f + C x
+$$
+
+Since I do not (yet) have a closed form expression for this, I form a $50 \times 50$ grid of possible draws of the payoffs $f$, fixing supply $x = \overline x$.
+
+For each $f$, I calculate the equilibrium conditions and store them. This lets me plot out the approximate pricing function!
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/prior.png"), 'white', fuzz = 0)
+```
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/params/baseline/prior-grid.png"), 'white', fuzz = 0)
+```
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/p1.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ \red{p_1} \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ {a_1} \\ a_2
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ b_{11} & b_{12} \\
+ b_{21} & b_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/p2.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ \red{p_2}
+\end{bmatrix} =
+\begin{bmatrix}
+ {a_1} \\ a_2
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ b_{11} & b_{12} \\
+ b_{21} & b_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/a1.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ \red{a_1} \\ a_2
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ b_{11} & b_{12} \\
+ b_{21} & b_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/a2.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ \red{a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ b_{11} & b_{12} \\
+ b_{21} & b_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/b11.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ \red{b_{11}} & b_{12} \\
+ b_{21} & b_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/b22.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ {b_{11}} & b_{12} \\
+ b_{21} & \red{b_{22}}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/b12.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ {b_{11}} & \red{b_{12}} \\
+ {b_{21}} & {b_{22}}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ c_{11} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/c11.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ {b_{11}} & b_{12} \\
+ {b_{21}} & {b_{22}}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ \red{c_{11}} & c_{12} \\
+ c_{21} & c_{22}
+\end{bmatrix}
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/c22.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ {b_{11}} & b_{12} \\
+ {b_{21}} & {b_{22}}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ {c_{11}} & c_{12} \\
+ c_{21} & \red{c_{22}}
+\end{bmatrix} 
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+## 
+
+```{r fig.align='center',  out.width='0.95\\paperheight'}
+magick::image_transparent(magick::image_read("../plots/pricing/c12.png"), 'white', fuzz = 0)
+```
+
+$$
+\begin{bmatrix}
+ p_1 \\ p_2
+\end{bmatrix} =
+\begin{bmatrix}
+ a_1 \\ {a_2}
+\end{bmatrix}
+ + 
+ \begin{bmatrix}
+ {b_{11}} & b_{12} \\
+ {b_{21}} & {b_{22}}
+\end{bmatrix}
+\begin{bmatrix}
+ f_1 \\ f_2
+\end{bmatrix}
++
+ \begin{bmatrix}
+ {c_{11}} & \red{c_{12}} \\
+ c_{21} & {c_{22}}
+\end{bmatrix} 
+\begin{bmatrix}
+ x_1 \\ x_2
+\end{bmatrix}
+$$
+
+# Next steps
+
+## Next steps
+
+1. Solve the ex-ante information choice problem.
+2. Solve the hidden attention allocation modification, a mixed strategy on $\Sigma_{\eta_j}$.
+3. Estimate the (observed) joint density ($f$) of many assets. Which assets should we see the most attention on given my understanding of $\Sigma_{\eta_j}(\mathbf{\mu}, \mathbf{\Sigma})$?
