@@ -1,6 +1,6 @@
 # Set up parameters
-all_j = 1_000
-all_k = 10
+all_j = 1_00
+all_k = 1
 
 ## Baseline, nothing interesting
 baseline_params = (
