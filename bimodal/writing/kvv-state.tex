@@ -55,13 +55,15 @@ url=false]{biblatex}
 
 A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. 
 
-The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that investors will rationally allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may understate how dramatic the effect of information choice can be when investors are confronted with complex economic environments.
+The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that ration investors will allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may misunderstand the role of information choice can be when investors are confronted with complex economic environments.
 
-Consider the example of two firms and their stocks. Company A is a domestic utility company. It has stable cashflows and is generally resistant to the business cycle. Company B is a riskier global trade venture which has state-contingent payoffs. In the good state, a foreign firm's economy experiences a boom, increasing Firm B's performance significantly. Firm B's payoffs are higher in the good state and may have different payoff variance. In the bad state, the foreign economy goes into recession, and Firm B has significantly lower payoffs with an arbitrarily different payoff variance. Assume that Firm A's payoff distribution varies only slightly between these two states, due to the small effects on domestic and international consumption that could lightly tilt the firm's performance. Investors are unable to accurately perceive the state of the foreign economy in a timely manner and must infer the state from signals about payoffs for Firms A \& B.
+The joint density of asset payoffs is complex. The economy-wide density depends on laws, competition, natural disasters, expectations, monetary policy, and any number of other stochastic values. Importantly, investors generally have (or can conjecture) priors about what might happen to the probabilities of a given set of payoffs in response to a change in fundamental economic conditions. The complexity of joint payoffs suggests that attention should be precisely allocated to assets that inform investors the most about the joint density.
 
-If an investor who wishes to forecast asset performance can only allocate a finite amount of attention between these two firms, which firm should they choose? If the investor allocates most of their attention to Firm A, they will receive a large and potentially precise signal about Firm A's payoffs but at the cost of little to no information about whether the economy is likely to be in the good state or the bad state. The question is a non-trivial one to answer, as investors make an ex-ante decision about which firms to assess, and then must choose some portfolio after observing information about each firm.
+Consider a relatively small industry that has exposure to trade tariffs where it is uncertain whether tariffs will be implemented. Tariffs have a high magnitude effect on the industry but a diffuse effect on all payoffs. Is it rational for the investor to allocate attention to representative firms in this industry to better form forecasts of the tariffs? Certainly, doing so would allow the investor to understand the industry by paying the opportunity cost to understand some other signal that might tell the investor more about all payoffs with a greater precision. The investor's ultimate goal is to form a portfolio of assets that satisfy their utility functions, so they must consider the universe of potential investments and how their payoffs relate to one another.
 
-The information and portfolio choice problems essentially reduce to a single question: how useful is knowledge about the state? First, the usefulness of state knowledge depends on the choices of other investors. Prices can be used to infer the information sets of other investors (\textcite{grossman_existence_1977}). Second, the usefulness of state information depends critically on how different the states are in their conditional densities. If the good state and bad state are extremely different, it may pay for an investor to be asymmetrically informed about state even if they are less informed about specific payoffs.
+I use a distributional assumption (the Gaussian mixture distribution) to approximate complex joint densities while maintaining the ease of a single joint-Gaussian framework as in \textcite{kacperczyk_rational_2016}. Extending the joint density of payoffs to a more complex distribution that incorporates state probabilities allows me to analyze how complexity drives attention allocation decisions, as well as the resulting portfolio choice problem.
+
+The information and portfolio choice problems essentially reduce to a single question: how useful is knowledge about the state? First, the usefulness of state knowledge depends on the choices of other investors. Public information contained in prices can be used to infer the information sets of other investors (\textcite{grossman_existence_1977}). Second, the usefulness of state information depends critically on how different the states are in their conditional densities. If the good state and bad state are extremely different, it may pay for an investor to be asymmetrically informed about state even if they are less informed about specific payoffs.
 
 I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
 
@@ -69,11 +71,11 @@ I examine how endogenous information choice with attention limitations can lead 
 
 \section{Model framework}
 
-Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016},  which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
+Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016}, which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
 
 The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
 
-I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with an arbitrary factor structure given by principal components. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
+I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets. I add the assumption that there is an  arbitrary factor structure to payoffs. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state\footnote{I employ two-state mixture model, but in principle any number of mixture components can be employed with only minor modifications to the model.} is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
 
 $$
 P(s) = \begin{cases}
@@ -97,8 +99,6 @@ The mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the 
 \end{align}
 
 \noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$ for some eigenvector matrix $\Gamma$. My model only permits the orthogonalization of the prior variance $\Sigma$, but in general the transforms on $\tilde q$ and $\tilde p$ will remain correlated conditional on state.
-
-
 }
 
 Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mixture distribution with mixture weights $\pi$ and $1-\pi$. The density function is written
@@ -109,12 +109,7 @@ Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mi
 
 \noindent Gaussian mixture distributions have the conceptual benefit of moving payoffs outside the traditional exponential family of distributions. In principle, a mixture model can approximate any complex joint density as the number of components increase (\cite{nguyen_approximations_2019}). I maintain only two components as a proof-of-concept, though much of my analysis expands easily to an arbitrary number of Gaussian components. Additionally, many of the posterior distributions are only marginally more complex than when using traditional normal or log-normal distributions.
 
-% \begin{figure}
-%     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{plots/mixture-1.png}
-%     \caption{The joint density contour plot of a multimodal Gaussian mixture distribution. Dimensionality is $\mathcal{R}^2$.}
-% \end{figure}
-
-As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting without minor modifications. Namely, the distribution of $f$ is unconditionally non-Gaussian. Fortunately, the Gaussian mixture distribution I pay off benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results thus benefit from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
+As in \textcite{admati_noisy_1985} and \textcite{kacperczyk_rational_2016}, I employ CARA utility to abstract from wealth effects. However, the conditions in \textcite{kacperczyk_rational_2016} that reduce the investment problem to a mean-variance problem do not hold in my setting without modifications. Namely, the distribution of $f$ is unconditionally non-Gaussian. Fortunately, the Gaussian mixture distribution benefits from the fact that the non-Gaussian density $P(f)$ can be rewritten as a weighted sum of two conditionally Gaussian densities, i.e. $P(f \mid s=H)P(s=H) + P(f \mid s=L) P(s=L)$. Many of my results come from the simplicity of the Normal distribution without reducing the joint density of payoffs to a simplistic unimodal distribution.
 
 The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1]$). Investors have exponential preferences on final-period wealth $W_j$, with a risk-aversion coefficient $\rho$. Expected utility at time 2 (after receiving private signals) is a function of risk-free rate $r$, initial wealth $W_0$, asset quantities $q_j$, asset payoffs $f$, and asset prices $p$.
 
@@ -131,9 +126,9 @@ A portion of investors (the \textit{informed}) receive private signals $\eta_j$ 
     \text{ or } \eta_j &= f + \epsilon_j, \quad \epsilon_j \sim \Gauss(0, \Sigma_{\eta_j})
 \end{align}
 
-\noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is the total amount of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply higher precision, and thus a more accurate signal of $f$.
+\noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is the total amount of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply lower variance of $\epsilon_{ij}$, and thus a more accurate signal of $f_i$, as well as more precise signals of whichever assets are correlated with asset $i$.
 
-Investors have limited attention, in that they cannot pay attention to all the signals they would like. Concretely, this constraint is written
+Investors have limited attention, in that they cannot pay infinite attention to all the signals they would like. Concretely, this constraint is written
 
 \begin{align}
     \sum_{i=1}^n K_{ij} \le K_j
@@ -141,7 +136,7 @@ Investors have limited attention, in that they cannot pay attention to all the s
 
 \noindent though for simplicity I equalize attention constraints across investors to $K_j = K$ for informed investors and $K_j = 0$ for uninformed investors. Uninformed investors can only use prices as signals about payoffs, whereas informed investors can use both prices and private signals. The attention constraint utilized here is common in the information choice literature -- see \textcite{kacperczyk_rational_2016}.
 
-Investors have two optimization problems to make. First, if the investor is informed, they must allocate their attention across private signals at time 1. Second, conditional on any information observed in time 1, investors construct portfolios to optimize expected utility at time 2, $U_{j2}$.
+Investors have two optimization problems to solve. First, if the investor is informed, they must allocate their attention across private signals at time 1. Second, conditional on any information observed in time 1, investors construct portfolios to optimize expected utility at time 2, $U_{j2}$.
 
 The investor's information choice problem is to maximize expected time-1 utility $U_{j1}$:
 
@@ -177,38 +172,41 @@ Finally, markets must clear at price $p$ and quantities $q_j$, leading to the tr
         q_j(p, \eta_j) \in \arg\max_{q_j} E_j [\exp{-\rho W_j} \mid \eta_j, p], \quad \forall j \in [0,1]
     \end{align}
 
-    \noindent that (b) markets clear, and (c) that all agents are optimizing conditional on their information set $\{p, \eta_j\}$.
+    \noindent that (b) markets clear, and (c) that all $q_j^*$ is optimal conditional on investor $j$'s information set $\{p, \eta_j\}$.
 
 \end{definition}
 
-Prices providing information to invesotrs is a long-standing proposition with a strong theoretical background like \textcite{grossman_efficiency_1976}, \textcite{admati_noisy_1985}, and others. \hl{Empirical support for price informativeness is robust as well}\todo{CITES}. The often-conjectured linear price function in noisy rational expectations models are interperetable as Gaussian signals around the true payoffs with noise due to uncertain asset supply. Fortunately, my model permits the use of a linear pricing function and the corresponding Gaussian signal as long as rational expectations hold -- equilibrium prices must be a linear function of the true payoffs $f$. 
-
-I conjecture and verify that the pricing function follows the form
+I conjecture and verify that an equilibrium pricing function follows the form
 
 \begin{align}
     p = A + B f + C x
 \end{align}
 
-\noindent The linear form of $p$ is Gaussian conditional on $f$, so the closed-form posterior for an investor $j$ is well-defined:
+\noindent The linear pricing function above is common in prior works -- see \textcite{kacperczyk_rational_2016}, \textcite{admati_noisy_1985}, and others. The often-conjectured linear price function in noisy rational expectations models are interperetable as Gaussian signals around the true payoffs with noise due to uncertain asset supply. Fortunately, my model permits the use of a linear pricing function and the corresponding Gaussian signal as long as rational expectations hold -- equilibrium prices must be a linear function of the true payoffs $f$. 
+
+The linear form of $p$ is Gaussian conditional on $f$, so the closed-form posterior for an investor $j$ is well-defined:
 
 \begin{align*}
     P(f \mid \eta_j, p) &= \frac{P(\eta_j, p \mid f) P(f)}{P(\eta_j, p)} \\
-    &= \frac{P(\eta_j, p \mid f, s_H) P(f \mid s_H)P(s_H) + P(\eta_j, p \mid f, s_L) P(f \mid s_L)P(s_L)}{
-        \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)}\\
     &= \frac{\pi P(\eta_j, p \mid f, s_H) P(f \mid s_H) + (1-\pi)P(\eta_j, p \mid f, s_L) P(f \mid s_L)}{
         \pi P(\eta_j, p \mid s_H) + (1-\pi) P(\eta_j, p \mid s_L)
     }
 \end{align*}
 
-\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator. To identify these posteriors, it is useful to note that the three variables of interest to investor $j$, $m_j = [f, p, \eta_j]'$, is Normal when conditioned on the latent state $s$ since prices conditional on $s$ are the sum of two Gaussians (payoff shocks $z$ and supply shocks $x$). 
+\noindent The above density is simply a weighted sum of Gaussian densities in the numerator and denominator. To identify this posterior, it is useful to note that the three variables of interest to investor $j$, $m_j = [f, p, \eta_j]'$, is Normal when conditioned on the latent state $s$ since prices conditional on $s$ are the sum of two Gaussians (payoff shocks $z$ and supply shocks $x$). 
 
 The mean of the payoff, price, and signal vector $m_j \mid s$ is
 
 $$
-E[m_j \mid s] = [\mu_s, A + B\mu_s + C \bar x, \mu_s]
+E[m_j \mid s] = \begin{bmatrix}
+    f \\ p \\ \eta_j
+\end{bmatrix} =
+\begin{bmatrix}
+    \mu_s \\ A + B\mu_s + C \bar x \\ \mu_s
+\end{bmatrix}
 $$
 
-\noindent with the block variance matrix
+\noindent with the $3n \times 3n$ block conditional variance matrix
 
 $$
 \Var[m_j \mid s] = \begin{bmatrix}
@@ -227,7 +225,7 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
     \hat \mu_{j,s} &= \mu_s + \Omega_{1,2} \Omega_{2,2,j}^{-1} (y_j - \bar y_{j,s})
 \end{align*}
 
-\noindent where $\Omega_{1,2}$, $\Omega_{2,1}$, and $\Omega_{2,2}$ are block matrices formed from the partition of $\Var[m_j \mid s]$:
+\noindent where $\Omega_{1,2}$, $\Omega_{2,1}$, and $\Omega_{2,2}$ are block matrices formed from a partition of $\Var[m_j \mid s]$:
 
 \begin{align*}
     \Omega_{1,2} &= \Omega_{2,1}' = \begin{bmatrix}
@@ -239,22 +237,13 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
     \end{bmatrix}
 \end{align*}
 
-\noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$ conditional on a particular draw of payoffs $f$ and supply shocks $x$.
-
-\todo{Derive the joint density of prices}
-
+\noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$. The numerical limitation prevents me from deriving the full equilibrium where information choice is endogenized, but the portfolio choice problem is easily solved.
 
 \section{Equilibrium}
 
 \textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem at time 2 first, and then using this solution to determine the optimal information choice at time 1. I defer to their solution, though with some added complexity due to the change in the densities of payoffs $f$ from multivariate Gaussian to mixture distributed.
 
-\begin{maxi}
-    {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
-    {\label{eq:learning-opt}}{}
-    \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
-\end{maxi}
-
-The appendix\todo{Add to appendix} shows that the quantity $q_j$ that solves (\ref{eq:learning-opt}) takes the form
+The appendix\todo{Add to appendix} shows that the optimal quantity $q^*_j$ that solves (\ref{eq:learning-opt}) takes the form
 
 \newcommand{\shat}{\hat s_j}
 \newcommand{\hShat}{\hat \Sigma_{H,j}}
@@ -262,10 +251,10 @@ The appendix\todo{Add to appendix} shows that the quantity $q_j$ that solves (\r
 \newcommand{\hMhat}{\hat \mu_{H,j}}
 \newcommand{\lMhat}{\hat \mu_{L,j}}
 \begin{align}
-    q_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat\big)
+    q^*_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat\big)
 \end{align}
 
-\noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only real difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the means and variances are weighted by the posterior state probabilities and summed. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
+\noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only substantive difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the posterior means and variances are weighted by the posterior state probabilities. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
 
 I start by defining several types of economies and solving prices conditional on the mean and covariance relationships of each economy. The four types I have cover the qualitative space of two-state economies, in that payoffs differ two states by the combination of means, variances, and correlations. Figure \ref{fig:priors} plots the joint density of payoffs for each economy.
 
