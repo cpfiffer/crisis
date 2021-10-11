@@ -450,7 +450,7 @@ function equilibrium(
         for j in 1:J
             # Find the integral
             zs = if finalplot && (j == 1 || j == divline+1)
-                consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=true)
+                consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
             else
                 consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
             end
