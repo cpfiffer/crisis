@@ -15,6 +15,7 @@ using CSV
 using FiniteDiff
 
 include("parameters.jl")
+include("eq-piecewise.jl")
 
 # Payoff shocks
 function signal(f, Σj)
@@ -32,10 +33,10 @@ function prior_mixture(params)
 
     g1 = MvNormal(μ1, Σ1)
     g2 = MvNormal(μ2, Σ2)
-    
+
     mm = MixtureModel([g1, g2], true_s)
     return mm
-end 
+end
 
 function posterior(f, η, Σj, params)
     # Construct signal distribution
@@ -247,7 +248,14 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, pl
         # sleep(0.1)
     end
 
-    return (s_hat=s_hat, μ1=μ_hat_1, Σ1=Σ_hat_1, μ2=μ_hat_2, Σ2=Σ_hat_2)
+    return (s_hat=s_hat,
+            μ1=μ_hat_1,
+            Σ1=Σ_hat_1,
+            μ2=μ_hat_2,
+            Σ2=Σ_hat_2,
+            log_s1=state1,
+            log_s2=state2,
+            denom=denom)
 end
 
 # function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
@@ -367,7 +375,7 @@ function investor_entropy(zs, params)
     c = [s_hat, 1-s_hat]
     m = [μ1_hat, μ2_hat]
     s = [Σ1_hat, Σ2_hat]
-    
+
     h_upper = sum(c[i] * gaussian_entropy(s[i]) for i in 1:2)
     h_lower = copy(h_upper)
     for i in 1:2
@@ -394,10 +402,10 @@ end
 
 #     c = [s_hat, 1-s_hat]
 
-#     h = 
+#     h =
 #     for i in 1:2
 #         for j in 1:2
-#             # h -= 
+#             # h -=
 #         end
 #     end
 # end
@@ -407,17 +415,17 @@ function equilibrium(
     params,
     θ,
     f,
-    x; 
-    finalplot = true, 
-    store = true, 
+    x;
+    finalplot = true,
+    store = true,
     calc_kl = false,
 )
     # Extract parameters
     @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name, ρ, J, K, seed, do_seed = params
-    
+
     g1 = MvNormal(μ1, Σ1)
     g2 = MvNormal(μ2, Σ2)
-    
+
     # Setup
     !ispath("results/individuals/$sim_name") && mkpath("results/individuals/$sim_name")
 
@@ -454,7 +462,9 @@ function equilibrium(
             else
                 consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
             end
-            q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
+            qf(p) = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
+            q = qf(p)
+
             total_q += q
 
             # Store results if we've got em'
@@ -564,7 +574,7 @@ function equilibrium(
     end
 
     try
-        if store 
+        if store
             df = DataFrame(res)
             # if finalplot
             #     sz = (500, 300)
@@ -667,7 +677,7 @@ function equilibrium(
         rethrow(e)
     end
     # return res
-    
+
     # Using NLSolve.jl
     # res = nlsolve(target, init_θ, autodiff=:forward, iterations=10_000)
     # target(res.zero, verbose=true)
@@ -678,7 +688,7 @@ end
 # The loop!
 function equilibrium_grid(
     params,
-    steps; 
+    steps;
     seed = 1,
     θ_guess=nothing,
     kwargs...
@@ -686,11 +696,12 @@ function equilibrium_grid(
     # Extract parameters
     @unpack μ1, Σ1, μ2, Σ2, true_s, x_bar, Σ_x, sim_name, ρ, J, K, seed, do_seed = params
     x = x_bar
-    
+
     g1 = MvNormal(μ1, Σ1)
     g2 = MvNormal(μ2, Σ2)
+    mm = prior_mixture(params)
     n_assets = 2
-    
+
     # Setup
     !ispath("results/individuals/$sim_name") && mkpath("results/individuals/$sim_name")
 
@@ -714,9 +725,9 @@ function equilibrium_grid(
     r = 1
 
     # Try to guess the initial pricing function.
-    init_θ = if isnothing(θ_guess)   
+    init_θ = if isnothing(θ_guess)
         vcat(
-            zeros(n_assets) , 
+            zeros(n_assets) ,
             -vec(diagm(ones(n_assets))), -vec(diagm(ones(n_assets))))
     else
         deepcopy(θ_guess)
@@ -728,9 +739,13 @@ function equilibrium_grid(
         # Conjecture A, B, C matrices
         all_norm = 0
         a, b, c = price_matrices(θ, n_assets)
-        for ff in f_grid
-            f[1] = ff[1]
-            f[2] = ff[2]
+        # local dd
+        # local dsigma
+        # losses = zeros(size(f_grid))
+        for ff in eachindex(f_grid)
+            f[1] = f_grid[ff][1]
+            f[2] = f_grid[ff][2]
+            prior_weight = pdf(mm, f)
 
             # Determine the price at this grid point
             p = a + b*f + c*x
@@ -738,24 +753,41 @@ function equilibrium_grid(
             # Calculate consumer posterior
             u_sum = 0
             total_q = zeros(n_assets)
+
             for j in 1:J
                 try
                     # Find the integral
-                    zs = consumer_posterior(f, f + η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
-                    q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
+                    cps(p) = consumer_posterior(f, f + η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
+                    cpsigma(p) = cps(p)[1]
+                    zs = cps(p)
+
+                    qf(p) = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
+                    q = qf(p)
+                    # dd = ForwardDiff.value.(ForwardDiff.jacobian(qf, p))
+                    # # dsigma = cpsigma(p)
+                    # dsigma = FiniteDiff.finite_difference_gradient(cpsigma, p)
+
+                    gg = map(l -> ForwardDiff.value.(cpsigma([l[1], l[2]])), f_grid)
+                    display(gg)
+
                     total_q += q
                 catch e
                     if e isa PosDefException
                         return Inf
                     end
-        
+
                     rethrow(e)
                 end
             end
-
-            all_norm += sum((total_q - x).^2)
+            v = sum((total_q - x).^2)
+            all_norm += v
+            # losses[ff] = ForwardDiff.value(v * prior_weight)
 
         end
+        # display(dd)
+        # display(ForwardDiff.value.(dsigma))
+        # println(ForwardDiff.value(all_norm))
+        # # display(losses)
         return all_norm
     end
 
@@ -773,8 +805,7 @@ function equilibrium_grid(
             LBFGS(),
             autodiff=:forwarddiff,
             Optim.Options(
-                iterations=1_000,
-                f_abstol = 1e-10,
+                iterations=100_000,
             )
         )
     catch e
@@ -821,7 +852,7 @@ function equilibrium_grid(
                 result.minimizer,
                 f,
                 x_bar,
-                store=true, 
+                store=true,
                 finalplot=false,
                 calc_kl=false,
             )
@@ -853,8 +884,8 @@ function equilibrium_grid(
     val = (
         rngs = qs,
         pairs=f_grid,
-        diff=diffs, 
-        prior=prior, 
+        diff=diffs,
+        prior=prior,
         disagreement=disagg,
         kl_mean=kls,
         kl_var = kls_var,
@@ -910,107 +941,8 @@ function generate_grid(params, steps, N=1_000_000)
     mins = map(r -> minimum(sort(draws[r,:])[dline:(N-dline)]), 1:size(draws, 1))
     maxs = map(r -> maximum(sort(draws[r,:])[dline:(N-dline)]), 1:size(draws, 1))
     qs = [range(mins[i], maxs[i], length=steps) for i in 1:length(mins)]
-    it = Iterators.product(qs...)
+    it = collect(Iterators.product(qs...))
     return it, qs
-end
-
-
-function eq_grid(params; steps=40)
-    !ispath("data/individuals/") && mkpath("data/individuals/")
-
-    it = generate_grid(params, steps)
-    as = []
-    bs = []
-    cs = []
-    ps = []
-    diffs = []
-    prior = []
-    disagg = []
-    kls = []
-    kls_var = []
-    entropy_lower = []
-    entropy_upper = []
-    all_excess = []
-    dfs = DataFrame[]
-
-    for i in 1:size(it, 1)
-        for j in 1:size(it, 2)
-            println("$i $j $(it[i,j]) $(params.sim_name) ")
-            ff = vcat(it[i,j]...)
-            push!(prior, pdf(m, ff))
-            try
-                df, (a,b,c), p = equilibrium(
-                    params,
-                    store=true, 
-                    finalplot=false,
-                    f=ff,
-                    x=params.x_bar,
-                    calc_kl=false,
-                    θ_guess = length(ps) > 0 && !ismissing(as[end]) && !ismissing(bs[end]) && !ismissing(cs[end]) ? 
-                        vcat(vec(as[end]), vec(bs[end]), vec(cs[end])) :
-                        nothing
-                )
-                push!(as, a)
-                push!(bs, b)
-                push!(cs, c)
-                push!(ps, p)
-                push!(diffs, ff - p)
-
-                if !ismissing(df)
-                    push!(disagg, sum(df.s_hat .^ 2))
-                    push!(kls, mean(df.kl))
-                    push!(kls_var, var(df.kl))
-                    push!(entropy_upper, mean(df.entropy_upper))
-                    push!(entropy_lower, mean(df.entropy_lower))
-                    append!(all_excess, df.forecast_error)
-
-                    df[!, :i] .= i
-                    df[!, :j] .= j
-                    push!(dfs, df)
-                end
-            catch e
-                rethrow(e)
-                if e isa InterruptException || e isa MethodError || e isa ArgumentError
-                    rethrow(e)
-                end
-                println(e)
-                push!(as, missing)
-                push!(bs, missing)
-                push!(cs, missing)
-                push!(ps, missing)
-                push!(diffs, missing)
-                push!(disagg, missing)
-                push!(kls, missing)
-                push!(kls_var, missing)
-                push!(entropy_upper, missing)
-                push!(entropy_lower, missing)
-            end
-        end
-    end
-
-    val = (
-        rngs = qs,
-        pairs=collect(it),
-        a=as, 
-        b=bs, 
-        c=cs, 
-        p=ps, 
-        diff=diffs, 
-        prior=prior, 
-        disagreement=disagg,
-        kl_mean=kls,
-        kl_var = kls_var,
-        entropy_upper=entropy_upper,
-        entropy_lower=entropy_lower,
-        excess=all_excess,
-    )
-
-    CSV.write("data/individuals/$(params.sim_name).csv", vcat(dfs...))
-
-    js_path = "jlso/$(params.sim_name)/"
-    !ispath(js_path) && mkpath(js_path)
-    JLSO.save(joinpath(js_path, "eq_grid-$(now()).jlso"), :values => js_path)
-    return val
 end
 
 function plot_vals(params, val; num_levels=25)
@@ -1022,7 +954,7 @@ function plot_vals(params, val; num_levels=25)
     # zs = map(identity, permutedims(reshape(val.prior, size(val.pairs)), [2,1]))
 
     savefig(contour(ys, xs, val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/prior.png")
-    
+
     # Add grid points to prior
     contour(xs, ys, val.prior, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1")
     gridpoints_x = vec(map(i -> i[2], val.pairs))
@@ -1042,25 +974,26 @@ function plot_vals(params, val; num_levels=25)
     # end
 end
 
-# for p in param_set
-#     val = eq_grid(p)
-#     plot_vals(p, val)
-# end 
-
-baseline_true = [
-    5.893040895578876, 
-    6.183641522523689, 
-    0.39049948394149364, 
-    0.01785386560955143, 
-    0.017853865609551014, 
-    0.3624665268018901, 
-    -1.1095342102205183, 
-    0.26829668775657844, 
-    0.23892382548448576, 
-    -1.4985840910533748
-]
-
 for p in param_set
-    val = equilibrium_grid(p, 50, θ_guess=baseline_true)
+    val = eq_grid(p)
     plot_vals(p, val)
-end 
+end
+
+# baseline_true = [
+#     5.893040895578876,
+#     6.183641522523689,
+#     0.39049948394149364,
+#     0.01785386560955143,
+#     0.017853865609551014,
+#     0.3624665268018901,
+#     -1.1095342102205183,
+#     0.26829668775657844,
+#     0.23892382548448576,
+#     -1.4985840910533748
+# ]
+
+# for p in param_set[5:end]
+#     println(p.sim_name)
+#     val = equilibrium_grid(p, 5, θ_guess=baseline_true)
+#     plot_vals(p, val)
+# end

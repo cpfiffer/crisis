@@ -1,6 +1,6 @@
 # Set up parameters
-all_j = 1_00
-all_k = 1
+all_j = 1_000
+all_k = 10
 
 ## Baseline, nothing interesting
 baseline_params = (
@@ -35,6 +35,24 @@ two_meanshift = (
     seed = 1,
     do_seed = true
 )
+
+## μ1[2] ≠ μ2[2]
+corr_test = (
+    sim_name = "corr-mean-shift",
+    μ1 = [10.0, 12.0],
+    μ2 = [10.0, 8.0],
+    Σ1 = [1.0 0.1; 0.1 1.0],
+    Σ2 = [1.0 0.1; 0.1 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
 
 ## Σ1[2,2] ≠ Σ2[2,2]
 two_varshift = (
@@ -141,10 +159,11 @@ morecorr_meanvar = (
 param_set = [
     baseline_params,
     two_meanshift,
-    # two_varshift,
+    two_varshift,
+    corr_test,
     two_meanvarshift,
-    # morecorr,
-    # lesscorr,
-    # morecorr_mean,
+    morecorr,
+    lesscorr,
+    morecorr_mean,
     morecorr_meanvar
 ]

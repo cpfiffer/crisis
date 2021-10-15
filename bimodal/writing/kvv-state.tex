@@ -12,6 +12,7 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{booktabs}
 % \setlength{\parindent}{0pt}
 
 \hfuzz=20pt 
@@ -251,7 +252,7 @@ The appendix\todo{Add to appendix} shows that the optimal quantity $q^*_j$ that 
 \newcommand{\hMhat}{\hat \mu_{H,j}}
 \newcommand{\lMhat}{\hat \mu_{L,j}}
 \begin{align}
-    q^*_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat\big)
+    q^*_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat - pr \big)
 \end{align}
 
 \noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only substantive difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the posterior means and variances are weighted by the posterior state probabilities. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
@@ -297,6 +298,12 @@ Prices are determined through numerical minimization of the squared difference o
 \end{mini}
 
 The optimizer will conjecture price parameters $A$, $B$, and $C$, and then calculate all investor's posterior beliefs about the means, variances, and state probabilities conditional on the particular draw of price parameters. If the price parameters are such that net quantities $\mathbf{q}(p) - x$ is highly positive or negative, the conjectured price function cannot be the market clearing price as there exists some assets which are not held by anyone. I use the \todo{Find cite for LBFGS}LBFGS algorithm with automatic differentiation for the gradient\footnote{It has historically been more common to use finite difference gradients, but advances in computation have enabled the faster and more accurate automatic differentiation. \hl{cite Chris' paper?}}. Typically, the numerical approach yields a squared quantity disjoint around $1e^{-22}$, which is approximately exact for most numerical purposes.
+
+\begin{table}
+    \begin{tabular}{lcccccc}
+        \input{../results/price-functions.tex}
+    \end{tabular}
+\end{table}
 
 \appendix
 \pagebreak
