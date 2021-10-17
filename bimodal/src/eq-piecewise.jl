@@ -78,12 +78,12 @@ function equilibrium(
             # Calculate consumer posterior
             u_sum = 0
             total_q = zeros(n_assets)
-            for j in 1:J
+            for person in 1:J
                 # Find the integral
-                zs = if finalplot && (j == 1 || j == divline+1)
-                    consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=plotting)
+                zs = if finalplot && (person == 1 || person == divline+1)
+                    consumer_posterior(f, η[person], Σj[person], p, a, b, c, x, params; person=person, plotting=plotting)
                 else
-                    consumer_posterior(f, η[j], Σj[j], p, a, b, c, x, params; person=j, plotting=false)
+                    consumer_posterior(f, η[person], Σj[person], p, a, b, c, x, params; person=person, plotting=false)
                 end
                 q = qstar(ρ, zs.s_hat, zs.Σ1, zs.Σ2, zs.μ1, zs.μ2, p, r)
                 total_q += q
@@ -107,8 +107,19 @@ function equilibrium(
 
                     entropy_l, entropy_h = investor_entropy(zs, params)
                     kl_calc = calc_kl ? approximate_kl(mixture_post, prior_mixture(params)) : missing
+                    pgrid = person == 1 ? pvar_grid(f, p, a, b, c, x, params) : missing
+                    # best = person == 1 ? sort(pgrid, by = x -> x.expectation) : missing
+                    # optimal = person == 1 ? best_attention(pgrid) : missing
+
+                    if person == 1
+                        xvals = map(z -> z.attention, pgrid)
+                        yvals = map(z -> z.expectation, pgrid)
+                        # display(first(optimal, 5))
+                        display(UnicodePlots.lineplot(xvals,yvals))
+                    end
 
                     push!(res, (
+                        j=person,
                         s_hat = zs.s_hat,
                         mu = mus,
                         mu_1 = zs.μ1,
@@ -125,8 +136,8 @@ function equilibrium(
                         utility_mean = t1,
                         utility_var = t2,
                         utility_price = t3,
-                        signal = η[j],
-                        attn_mat = diag(Σj[j]),
+                        signal = η[person],
+                        attn_mat = diag(Σj[person]),
                         payoff = f,
                         state = s,
                         true_mu = true_s[1] * μ1 + (1-true_s[1]) * μ2,
@@ -136,19 +147,20 @@ function equilibrium(
                         true_sigma_2 = Σ2,
                         price = p,
                         act_return = f ./ p,
-                        exante = (f - p)' * inv(Σj[j]) * (f - p),
+                        exante = (f - p)' * inv(Σj[person]) * (f - p),
                         A = a,
                         B = b,
                         C = c,
-                        group = j <= divline ? "attn_asset_1" : "attn_asset_2",
+                        group = person <= divline ? "attn_asset_1" : "attn_asset_2",
                         entropy_lower = entropy_l,
                         entropy_upper = entropy_h,
-                        kl = kl_calc
+                        kl = kl_calc,
+                        pvar = pgrid,
                     ))
 
-                    if finalplot && (j == 1 || j == divline+1)
+                    if finalplot && (person == 1 || person == divline+1)
                         open("results/individuals/$sim_name/$j.txt", write=true, create=true) do io
-                            println(io, "Person $j\n")
+                            println(io, "Person $person\n")
                             println(io, "--------------------------------------------")
                             println(io, "\nPosterior beliefs")
                             println(io, "s_hat:              ", round.(zs.s_hat, digits=3))
@@ -171,8 +183,8 @@ function equilibrium(
                             println(io, "u_j:       ", round.(uj, digits=3))
                             println(io)
                             println(io, "\nAttention")
-                            println(io, "signal:    ", round.(η[j], digits=3))
-                            println(io, "attention: ", round.(Σj[j], digits=3))
+                            println(io, "signal:    ", round.(η[person], digits=3))
+                            println(io, "attention: ", round.(Σj[person], digits=3))
                             println(io)
                             println(io, "\nGround truth")
                             println(io, "payoffs:   ", round.(f, digits=3))
@@ -409,6 +421,9 @@ function eq_grid(params; steps=25)
     entropy_upper = []
     all_excess = []
     dfs = DataFrame[]
+    att = []
+    all_pvar = []
+    attention_grids = []
 
     for i in 1:size(it, 1)
         for j in 1:size(it, 2)
@@ -447,12 +462,22 @@ function eq_grid(params; steps=25)
                     push!(diffs, ff - p)
                     append!(all_excess, df.forecast_error)
 
+                    subonly = dropmissing(df, :pvar)
+                    zz = filter(m -> m.j == 1, df)
+                    if size(subonly, 1) > 0
+                        best = best_attention(subonly.pvar[1])
+                        push!(att, best.attention[1])
+                        append!(all_pvar, subonly.pvar[1])
+                    else
+                        push!(best_attention, missing)
+                    end
+
                     df[!, :i] .= i
                     df[!, :j] .= j
                     push!(dfs, df)
                 end
             catch e
-                rethrow(e)
+                # rethrow(e)
                 if e isa InterruptException || e isa MethodError || e isa ArgumentError
                     rethrow(e)
                 end
@@ -466,6 +491,7 @@ function eq_grid(params; steps=25)
                 push!(kls, missing)
                 push!(kls_var, missing)
                 push!(entropy_upper, missing)
+                push!(att, missing)
                 push!(entropy_lower, missing)
             end
         end
@@ -486,12 +512,18 @@ function eq_grid(params; steps=25)
         entropy_upper=entropy_upper,
         entropy_lower=entropy_lower,
         excess=all_excess,
+        best_attention=att,
+        all_pvar = all_pvar,
+        verybest = best_attention(all_pvar)[1, :attention],
+        grids = attention_grid(all_pvar)
     )
+
+    @info params.sim_name val.verybest
 
     CSV.write("data/individuals/$(params.sim_name).csv", vcat(dfs...))
 
     js_path = "jlso/$(params.sim_name)/"
     !ispath(js_path) && mkpath(js_path)
-    JLSO.save(joinpath(js_path, "eq_grid-$(now()).jlso"), :values => js_path)
+    JLSO.save(joinpath(js_path, "eq_grid-$(now()).jlso"), :values => val)
     return val
 end

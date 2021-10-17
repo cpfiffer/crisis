@@ -6,14 +6,17 @@ using LinearAlgebra
 using GLM
 using Printf
 
-# things = [
-#     "baseline",
-#     "a2-mean-shift",
-#     "a2-meanvar-shift",
-#     "more-corr-meanvarshift",
-# ]
+include("parameters.jl")
+include("posterior.jl")
 
-things = replace.(readdir("data/individuals/"), ".csv" => "")
+things = [
+    "baseline",
+    # "a2-mean-shift",
+    # "a2-meanvar-shift",
+    # "more-corr-meanvarshift",
+]
+
+# things = replace.(readdir("data/individuals/"), ".csv" => "")
 
 sort!(things)
 colnames = Symbol[:intercept]
@@ -216,70 +219,61 @@ end
 
 # V2
 open("results/price-functions.tex", write=true, create=true, append=false) do io
-    tab = "\\toprule\n\$p_1\$\\\\\n"
-    tab *= @sprintf("%25s", "")
+    tab = "\\toprule\n"
+    tab *= @sprintf("%25s", "\$p_1\$")
     for n in coefnames(p1s[1])
         nn = replace(n, "payoff" => "f_")
         nn = replace(nn, "(Intercept)" => "a")
+        nn = replace(nn, "*" => "\\times ")
+        nn = replace(nn, "^1" => "")
         nn = "\$" * nn * "\$"
-        tab *= @sprintf("&%12s", nn)
+        tab *= @sprintf(" & %12s", nn)
     end
     tab *= "\\\\\n"
 
     for (f1, thing) in zip(p1s, things)
         tab *= @sprintf("%25s", thing)
         for c in coef(f1)
-            tab *= @sprintf("&%12.2f", c)
+            tab *= @sprintf(" & \$%12.2f\$", c)
         end
         tab *= "\\\\\n"
     end
 
-    tab *= "\\midrule\n\$p_2\$\\\\\n"
-    tab *= @sprintf("%25s", "")
+    tab *= "\\midrule\n"
+    tab *= @sprintf("%25s", "\$p_2\$")
     for n in coefnames(p2s[1])
         nn = replace(n, "payoff" => "f_")
         nn = replace(nn, "(Intercept)" => "a")
+        nn = replace(nn, "*" => "\\times ")
+        nn = replace(nn, "^1" => "")
         nn = "\$" * nn * "\$"
-        tab *= @sprintf("&%12s", nn)
+        tab *= @sprintf(" & %12s", nn)
     end
     tab *= "\\\\\n"
 
     for (f2, thing) in zip(p2s, things)
         tab *= @sprintf("%25s", thing)
         for c in coef(f2)
-            tab *= @sprintf("&%12.2f", c)
+            tab *= @sprintf(" & \$%12.2f\$", c)
         end
         tab *= "\\\\\n"
     end
 
     tab *= "\\bottomrule"
     println(io, tab)
+end
 
-    # for (f1, f2, thing) in zip(p1s, p2s, things)
-    #     tab = "$thing\n  "
-    #     for n in coefnames(f1)
-    #         nn = replace(n, "payoff" => "f")
-    #         tab *= @sprintf("%17s", nn)
-    #     end
-    #     tab *= "\np1"
-    #     for c in coef(f1)
-    #         tab *= @sprintf("%17.2f", c)
-    #     end
-    #     # tab *= "\n  "
-    #     # for (c,s) in zip(coef(f1), stderror(f1))
-    #     #     tab *= @sprintf("%17.2f", c/s)
-    #     # end
 
-    #     tab *= "\np2"
-    #     for c in coef(f2)
-    #         tab *= @sprintf("%17.2f", c)
-    #     end
-    #     # tab *= "\n  "
-    #     # for (c,s) in zip(coef(f2), stderror(f2))
-    #     #     tab *= @sprintf("%17.2f", c/s)
-    #     # end
-    #     tab *= "\n"
-
-    #     println(io, tab)
-    # end
+for (f1, f2, thing) in zip(p1s, p2s, things)
+    pfun = polyfunction([f1, f2])
+    parameters = plookup(thing)
+    it, qs = generate_grid(parameters, 5)
+    
+    for ff in it
+        f = [fi for fi in ff]
+        for θk in 0.01:0.01:0.999
+            Σj = diagm([inv(θk * parameters.K), inv((1-θk) * parameters.K)])
+            println(thing, " ", f, " ", Σj)
+        end
+    end
 end

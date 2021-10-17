@@ -13,6 +13,7 @@ using Parameters
 using JLSO, Dates
 using CSV
 using FiniteDiff
+import UnicodePlots
 
 include("parameters.jl")
 include("eq-piecewise.jl")
@@ -258,6 +259,57 @@ function consumer_posterior(f, η, Σj, p, A, B, C, x, params; verbose=false, pl
             denom=denom)
 end
 
+function pvar_grid(f, p, A, B, C, x, params; N=1000)
+    @unpack K = params
+    prior = pdf(prior_mixture(params), f)
+
+    ts = []
+    for θk in 0.01:0.01:0.999
+        Σj = diagm([inv(θk * K), inv((1-θk) * K)])
+
+        ev = 0
+        for _ in 1:N
+            η = rand(MvNormal(Σj))
+            cps = consumer_posterior(f, η, Σj, p, A, B, C, x, params)
+            m = convex_combo(cps.s_hat, cps.μ1, cps.μ2)
+            s = convex_combo(cps.s_hat, cps.Σ1, cps.Σ2)
+            val = only((m-p)'s*(m-p))
+            ev += val
+        end
+        # ev /= N
+        push!(ts, (payoff=f, attention=θk, expectation=ev, prior=prior, weighted=ev*prior))
+    end
+    return ts
+end
+
+function best_attention(pvar)
+    evs = Dict()
+
+    for p in pvar
+        evs[p.attention] = 0
+    end
+
+    for p in pvar
+        evs[p.attention] += p.weighted
+    end
+
+    nts = []
+    for (k,v) in evs
+        push!(nts, (attention=k, expectation=v))
+    end
+
+    return sort(DataFrame(nts), :expectation, rev=true)
+end
+
+function attention_grid(pvars)
+    gg = Dict()
+    ks = sort(unique(map(z -> z.attention, pvars)))
+    for k in ks
+        sub = filter(z -> z.attention == k, pvars)
+        gg[k] = map(z -> z.weighted, sub)
+    end
+    return gg
+end
 # function sigma_bar(s_bar, Σ_bar_1, Σ_bar_2)
 #     return (s_bar .* Σ_bar_1 + (1-s_bar).*Σ_bar_2)
 # end
@@ -967,6 +1019,21 @@ function plot_vals(params, val; num_levels=25)
     savefig(contour(xs, ys, val.entropy_upper, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/entropy_upper.png")
     savefig(density(map(x -> ismissing(x) ? missing : x[1], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-1.png")
     savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-2.png")
+    savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-2.png")
+    # savefig(scatter(xs, ys, color=val.best_attention, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/optimal_attention.png")
+    savefig(StatsPlots.histogram(val.best_attention), "$ps/optimal_attention_histogram.png")
+
+    !ispath("$ps/attentiongrids/") && mkpath("$ps/attentiongrids/")
+    for (k,v) in val.grids
+        savefig(StatsPlots.contour(xs, ys, v, title = "Attention $k"), "$ps/attentiongrids/$k.png")
+    end
+
+    xvals = map(z -> z.attention, val.all_pvar)
+    yvals = map(z -> z.expectation, val.all_pvar)
+    points = map(z -> string(z.payoff), val.all_pvar)
+    display([xvals yvals points])
+    StatsPlots.plot(xvals, yvals, legend=false, group=points)
+    savefig("$ps/optimality_functions.png")
 
     # if length(val.kl_mean) > 0
         # savefig(contour(val.rngs[2], val.rngs[1], val.kl_mean, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/kl_mean.png")
@@ -974,10 +1041,6 @@ function plot_vals(params, val; num_levels=25)
     # end
 end
 
-for p in param_set
-    val = eq_grid(p)
-    plot_vals(p, val)
-end
 
 # baseline_true = [
 #     5.893040895578876,

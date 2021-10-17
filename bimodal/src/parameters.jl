@@ -1,6 +1,6 @@
 # Set up parameters
-all_j = 1_000
-all_k = 10
+all_j = 1000
+all_k = 1
 
 ## Baseline, nothing interesting
 baseline_params = (
@@ -157,13 +157,22 @@ morecorr_meanvar = (
 )
 
 param_set = [
-    baseline_params,
-    two_meanshift,
-    two_varshift,
-    corr_test,
+    # baseline_params,
+    # two_meanshift,
+    # two_varshift,
+    # corr_test,
     two_meanvarshift,
     morecorr,
     lesscorr,
     morecorr_mean,
     morecorr_meanvar
 ]
+
+function plookup(s)
+    sub = filter(x -> x.sim_name == s, param_set)
+    if length(sub) == 1
+        return only(sub)
+    else
+        return missing
+    end
+end
