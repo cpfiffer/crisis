@@ -57,21 +57,21 @@ url=false]{biblatex}
 
 A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. 
 
-The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that ration investors will allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may misunderstand the role of information choice can be when investors are confronted with complex economic environments.
+The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that rational investors will allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may misunderstand the role of information choice can be when investors are confronted with complex ex-ante economic environments.
 
-The joint density of asset payoffs is complex. The economy-wide density depends on laws, competition, natural disasters, expectations, monetary policy, and any number of other stochastic values. Importantly, investors generally have (or can conjecture) priors about what might happen to the probabilities of a given set of payoffs in response to a change in fundamental economic conditions. The complexity of joint payoffs suggests that attention should be precisely allocated to assets that inform investors the most about the joint density.
+The joint density of asset payoffs is complex. It is high dimensional, potentially ex-ante multimodal, and has non-trivial higher moments such as skewness and kurtosis. The density depends on laws, competition, natural disasters, expectations, monetary policy, and any number of other stochastic values. Importantly, investors generally have (or can conjecture) priors about what might happen to the probabilities of a given set of payoffs in response to a change in fundamental economic conditions. The complexity of joint payoffs suggests that attention should be precisely allocated to assets that inform investors the most about the joint density. 
 
 Consider a relatively small industry that has exposure to trade tariffs where it is uncertain whether tariffs will be implemented. Tariffs have a high magnitude effect on the industry but a diffuse effect on all payoffs. Is it rational for the investor to allocate attention to representative firms in this industry to better form forecasts of the tariffs? Certainly, doing so would allow the investor to understand the industry by paying the opportunity cost to understand some other signal that might tell the investor more about all payoffs with a greater precision. The investor's ultimate goal is to form a portfolio of assets that satisfy their utility functions, so they must consider the universe of potential investments and how their payoffs relate to one another.
 
-I use a distributional assumption (the Gaussian mixture distribution) to approximate complex joint densities while maintaining the ease of a single joint-Gaussian framework as in \textcite{kacperczyk_rational_2016}. Extending the joint density of payoffs to a more complex distribution that incorporates state probabilities allows me to analyze how complexity drives attention allocation decisions, as well as the resulting portfolio choice problem.
+I utilize a distributional assumption (the Gaussian mixture distribution) to approximate complex joint densities while maintaining the ease of a single joint-Gaussian framework as in \textcite{kacperczyk_rational_2016}. Extending the joint density of payoffs to a more complex distribution that incorporates state probabilities allows me to analyze how complexity drives attention allocation decisions, as well as the resulting portfolio choice problem.
 
 The information and portfolio choice problems essentially reduce to a single question: how useful is knowledge about the state? First, the usefulness of state knowledge depends on the choices of other investors. Public information contained in prices can be used to infer the information sets of other investors (\textcite{grossman_existence_1977}). Second, the usefulness of state information depends critically on how different the states are in their conditional densities. If the good state and bad state are extremely different, it may pay for an investor to be asymmetrically informed about state even if they are less informed about specific payoffs.
 
-I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces \hl{substantially different} \todo[noline]{Check if this actually happened} portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors \textit{only} about payoffs.
+I examine how endogenous information choice with attention limitations can lead investors to choose distinct portfolios when signals inform investors about both the underlying economic state and asset payoffs in those states. Allowing risk averse investors to select signals that are informative about state and payoffs jointly produces different attention and asset portfolios from standard noisy rational equilibrium models, as well as shifting the conclusions of canonical models of information choice where signals inform investors only about payoffs. 
 
-\todo{lit review here}
+Section \ref{sec:model} describes a modified version of the model employed by \textcite{kacperczyk_rational_2016}. Section \ref{sec:peq} characterizes numerical results from four simulated economies. Section \ref{sec:analysis} interperets the preliminary numerical results and proposes some interesting areas of further study.
 
-\section{Model framework}
+\section{Model framework}\label{sec:model}
 
 Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016}, which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
 
@@ -241,7 +241,7 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
 
 \noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$. The numerical limitation prevents me from deriving the full equilibrium where information choice is endogenized, but the portfolio choice problem is easily solved.
 
-\section{Partial equilibrium characterization}
+\section{Partial equilibrium characterization}\label{sec:peq}
 
 \textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem at time 2 first, and then using this solution to determine the optimal information choice at time 1. I defer to their solution, though with some added complexity due to the change in the densities of payoffs $f$ from multivariate Gaussian to mixture distributed. I do not currently have a closed-form solution for prices and thus the whole economy, but I suspect that one exists by allowing for a polynomial function in prices.
 
@@ -331,7 +331,7 @@ The optimizer will conjecture price parameters $A$, $B$, and $C$, and then calcu
 \end{figure}
 
 
-I solve for the market clearing price for each point on a $25 \times 25$ grid of payoffs drawn from the prior density of the economy. Figure \ref{fig:prior-grid} illustrates grid points sampled on each of the four economies. Since I assume that there is a linear price around each payoff grid point but make no aggregate restrictions across pricing functions, the resulting price function tends towards non-linearity. Economies 1 and 2 have strictly linear pricing functions when solving for prices jointly across all grid points, but the introduction of any correlation between assets in different states cannot be numerically solved. This implies that any analytic pricing function I choose must be non-linear\footnote{One possible analytic form for prices might be an $M$-order polynomial in the non-central moments of $f$:
+I solve for the market clearing price for each point on a $10 \times 10$ grid of payoffs drawn from the prior density of the economy. Figure \ref{fig:prior-grid} illustrates grid points sampled on each of the four economies. Since I assume that there is a linear price around each payoff grid point but make no aggregate restrictions across pricing functions, the resulting price function tends towards non-linearity. Economies 1 and 2 have strictly linear pricing functions when solving for prices jointly across all grid points, but the introduction of any correlation between assets in different states cannot be numerically solved. This implies that any analytic pricing function I choose must be non-linear\footnote{One possible analytic form for prices might be an $M$-order polynomial in the non-central moments of $f$:
 
 $$
 p(f, x) = \sum_{m=0}^M \Phi_m f^m + C x 
@@ -346,16 +346,16 @@ This form is attractive, since the non-central moments of each Gaussian componen
     \begin{tabular}{lcccccc}
         \toprule
         $p_1$ &          $a$ &        $f_1$ &      $f_1^2$ &        $f_2$ &      $f_2^2$ & $f_1\times f_2$\\
-     baseline & $        2.38$ & $        0.61$ & $       -0.00$ & $        0.34$ & $       -0.01$ & $       -0.01$\\
-a2-mean-shift & $        3.79$ & $        0.48$ & $        0.01$ & $        0.24$ & $       -0.00$ & $       -0.02$\\
-a2-meanvar-shift & $        2.50$ & $        0.80$ & $       -0.01$ & $        0.17$ & $       -0.00$ & $       -0.01$\\
-more-corr-meanvarshift & $        1.24$ & $        0.66$ & $        0.01$ & $        0.49$ & $       -0.01$ & $       -0.03$\\
+     baseline & $        2.66$ & $        0.56$ & $       -0.00$ & $        0.31$ & $       -0.01$ & $       -0.01$\\
+a2-mean-shift & $        4.14$ & $        0.50$ & $        0.00$ & $        0.17$ & $       -0.00$ & $       -0.01$\\
+a2-meanvar-shift & $        1.31$ & $        0.96$ & $       -0.02$ & $        0.25$ & $       -0.01$ & $       -0.01$\\
+more-corr-meanvarshift & $        0.50$ & $        0.84$ & $        0.00$ & $        0.49$ & $       -0.01$ & $       -0.03$\\
 \midrule
         $p_2$ &          $a$ &        $f_1$ &      $f_1^2$ &        $f_2$ &      $f_2^2$ & $f_1\times f_2$\\
-     baseline & $        2.42$ & $        0.35$ & $       -0.00$ & $        0.60$ & $       -0.00$ & $       -0.01$\\
-a2-mean-shift & $        1.20$ & $        0.22$ & $       -0.01$ & $        0.70$ & $       -0.00$ & $        0.00$\\
-a2-meanvar-shift & $       -0.48$ & $        0.05$ & $        0.00$ & $        1.27$ & $       -0.03$ & $        0.00$\\
-more-corr-meanvarshift & $       -1.94$ & $        0.54$ & $       -0.02$ & $        1.03$ & $       -0.01$ & $       -0.00$\\
+     baseline & $        2.68$ & $        0.31$ & $       -0.00$ & $        0.56$ & $       -0.00$ & $       -0.01$\\
+a2-mean-shift & $        0.42$ & $        0.18$ & $       -0.00$ & $        0.80$ & $       -0.00$ & $        0.00$\\
+a2-meanvar-shift & $       -3.86$ & $        0.16$ & $       -0.01$ & $        1.80$ & $       -0.06$ & $        0.01$\\
+more-corr-meanvarshift & $       -4.13$ & $        0.58$ & $       -0.02$ & $        1.38$ & $       -0.03$ & $       -0.01$\\
 \bottomrule
     \end{tabular}
 \end{table}
@@ -375,7 +375,7 @@ I simulate the distribution of time 1 utility in (\ref{eq:portfolio-opt}), which
 
 Next, I calculate the utility an investor would receive in each state of the world for a different "portfolio" of attention allocation. Note that (\ref{eq:exante}) is an implicit function of the attention matrix $\Sigma_j$. Define the function $\phi(\theta_k) = E[U_{j2}(\theta_k)]$ where $\theta_k \in [0,1]$ indicates the proportion of attention allocated to asset 1, and $1-\theta_k$ indicates the attention allocated to asset 2. The next section attempts to interpret the attention allocation function $\phi(\theta_k)$. $\phi(\theta_k)$ summarizes the ex-ante optimization problem faced by investors.
 
-\section{Analysis}
+\section{Analysis}\ref{sec:analysis}
 
 \begin{figure}
     \centering
@@ -415,10 +415,42 @@ Importantly, Figure \ref{fig:optimality_functions} suggests the possibility that
 
 Such an equilibrium has important ramifications for investors who may tend to fall into one group in the other -- for example, risk-averse funds may herd while more risk-tolerant funds may become asymmetrically informed. In this situation, the risk-tolerant funds would extract an attention-based rent from risk-averse funds. Aggregate disagreement about economic conditions will also be higher as distinct groups select different attention portfolios. More generally, my interpretations of the above indicate a complex economy would produce (a) specialists who understand asset individual payoffs well, and (b) generalists who attempt to consolidate the specialists' information from prices.
 
-It may further be the case that a sufficiently complex economy can no longer support informative prices. Previous works (\cite{admati_noisy_1985, hellwig_1980,kacperczyk_rational_2016} among many others) generally conclude that prices yield information to investors and enhance the welfare value of accurate market prices. The difficulty with this is that, as prior payoffs become more and more complex, the information channel capacity of prices to convey payoff information shrinks. The combination of heterogeneous agent beliefs and uninformative prices mean that prices could exhibit severe excess volatility and disjointed expected returns even with a continuum of rational Bayesian agents. Prices may be too small a channel to convey exact information (in a NREE sense) in complex economies.
 
-Regardless, the (temporary) lack of a formal equilibrium and closed-form solution restrict my ability to understand attention allocation across complex economies. Early numerical results are indicative of a non-trivial departure from basic information choice models, in that it is not always optimal to specialize, prices may be highly uninformative, and investor disagreement may play a larger role in observed asset dynamics.
 
+It may further be the case that a sufficiently complex economy can no longer support informative prices. Previous works (\textcite{admati_noisy_1985, hellwig1980, kacperczyk_rational_2016} among many others) generally conclude that prices yield information to investors and enhance the welfare value of accurate market prices. The difficulty with this is that, as prior payoffs become more and more complex, the information channel capacity of prices to convey payoff information shrinks. The combination of heterogeneous agent beliefs and uninformative prices mean that prices could exhibit severe excess volatility and disjointed expected returns even with a continuum of rational Bayesian agents. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/entropy_upper.png}
+        \caption{Baseline}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/entropy_upper.png}
+        \caption{Mean shift}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/entropy_upper.png}
+        \caption{Mean and variance shift}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/entropy_upper.png}
+        \caption{Mean, variance, and correlation shift}
+    \end{subfigure}
+    \caption{Distributions of the upper bound on posterior entropy for different observations of $f$. Higher values indicate that investors have increased amounts of irreducible uncertainty. Note that for the multimodal economies, payoffs at the expected value of $[10,10]'$ are also those that have the highest posterior entropy.}
+    \label{fig:entropy_upper}
+\end{figure}
+
+Prices may be too small a channel to convey exact information (in a NREE sense) in complex economies. In the baseline economy of Section \ref{sec:peq}, the unconditional expected payoff of $E[f] = [10,10]'$ happens to coincide with the distributional mode of $[10,10]'$. The "average" payoff is also the modal payoff, so investors are not particularly uncertain when they observe prices that are indicative of the typical payoff. In a more complicated joint density, prices that indicate the "mean" payoff of $[10,10]'$ can fall in low-density regions between conditional state densities. In this case, the "typical" price is one of the least informative prices possible, since it conveys little information about which state investors are in. 
+
+Figure \ref{fig:entropy_upper} displays the average upper bound on posterior entropy for investors at each grid point in the prior. Note that entropy is highest at the distributional mean for the complex economies, while it is smooth for the baseline economy \footnote{The bound is actually flat everywhere in the baseline case, but Figure \ref{fig:entropy_upper} is technically a bound and may not illustrate this effect. See Figure \ref{fig:entropy_lower} in the appendix for the lower bound on entropy, which illustrates that the baseline economy has constant posterior entropy.}. Put differently, prices that are ex-ante easily expected are also prices that convey the least amount of information. This may not be surprising, but note that forecast errors are \textit{highest} at the mean price in a complex economy, but \textit{lowest} at the mean price in the baseline economy. As the number of economic states increases, it becomes impossible to see how prices can convey any information at all even if prices are functions of the true payoffs.
+
+Regardless, the (temporary) lack of a formal equilibrium and closed-form solution restrict my ability to understand attention allocation across complex economies. Early numerical results are indicative of a non-trivial departure from basic information choice models, in that it is not always optimal to specialize, prices may be highly uninformative, and investor disagreement may play a larger role in observed asset dynamics. In future revisions of this paper, I intend to fully characterize equilibrium conditions, derive more interpretable pricing functions, and form general conclusions about the optimal attention allocation portfolio as a function of the parameters of the prior joint density.
+
+\newpage
+\printbibliography
+
+\newpage
 \appendix
 \pagebreak
 
@@ -442,23 +474,7 @@ Regardless, the (temporary) lack of a formal equilibrium and closed-form solutio
     \label{fig:entropy_lower}
 \end{figure}
 
-\begin{figure}
-    \centering
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/params/baseline/entropy_upper.png}
-        \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/entropy_upper.png}
-    \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/entropy_upper.png}
-    \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/entropy_upper.png}
-    \end{subfigure}
-    \caption{Distributions of the upper bound on posterior entropy for different observations of $f$.}
-    \label{fig:entropy_upper}
-\end{figure}
+
 
 
 \begin{figure}
@@ -686,8 +702,5 @@ Ex-ante expected utility:
         \biggr) \tilde q_j
 \end{align*}
 
-
-% \newpage
-% \printbibliography
 
 \end{document}
