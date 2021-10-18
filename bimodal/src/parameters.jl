@@ -157,14 +157,14 @@ morecorr_meanvar = (
 )
 
 param_set = [
-    # baseline_params,
-    # two_meanshift,
+    baseline_params,
+    two_meanshift,
     # two_varshift,
     # corr_test,
     two_meanvarshift,
-    morecorr,
-    lesscorr,
-    morecorr_mean,
+    # morecorr,
+    # lesscorr,
+    # morecorr_mean,
     morecorr_meanvar
 ]
 

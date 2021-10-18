@@ -36,8 +36,8 @@ function equilibrium(
     # Two types
     divline = div(J, 2)
     Σj = vcat(
-        repeat([diagm([inv(K*0.9), inv(K*0.1)])], divline),
-        repeat([diagm([inv(K*0.1), inv(K*0.9)])], J - divline),
+        repeat([diagm([inv(K*0.5), inv(K*0.5)])], divline),
+        repeat([diagm([inv(K*0.5), inv(K*0.5)])], J - divline),
     )
     η = [rand(signal(f, Σj[j])) for j in 1:J]
 
@@ -403,7 +403,7 @@ function equilibrium(
     end
 end
 
-function eq_grid(params; steps=25)
+function eq_grid(params; steps=10)
     !ispath("data/individuals/") && mkpath("data/individuals/")
 
     it, qs = generate_grid(params, steps)
@@ -444,11 +444,13 @@ function eq_grid(params; steps=25)
                 )
 
 
-                if !ismissing(df)
+                if !ismissing(df) && size(df, 1) > 0
                     # a = df.A[1]
                     # b = df.B[1]
                     # c = df.C[1]
                     # p = df.p[1]
+
+                    # display(df)
 
                     push!(disagg, sum(df.s_hat .^ 2))
                     push!(kls, mean(df.kl))

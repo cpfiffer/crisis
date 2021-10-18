@@ -46,6 +46,7 @@ url=false]{biblatex}
 
 % Theorem styles
 \newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
 
 
 \newpage
@@ -154,7 +155,7 @@ The investor's information choice problem is to maximize expected time-1 utility
 
 \begin{maxi}
     {q_{j}}{U_{j2} = E_j[\exp{-\rho W_j} \mid \eta_j, p]}
-    {\label{eq:learning-opt}}{}
+    {\label{eq:portfolio-opt}}{}
     \addConstraint{W_j }{= r W_0 + q'_j (f - pr)}
 \end{maxi}
 
@@ -240,22 +241,9 @@ To derive the posterior mean and variance, denote the aggregate signal held by i
 
 \noindent The matrices $A$, $B$, and $C$ are calculated from the fixed-point that solves the market clearing condition. At the moment, I solve for these numerically, but I will eventually calculate the analytic forms for $A$, $B$, and $C$. The numerical limitation prevents me from deriving the full equilibrium where information choice is endogenized, but the portfolio choice problem is easily solved.
 
-\section{Equilibrium}
+\section{Partial equilibrium characterization}
 
-\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem at time 2 first, and then using this solution to determine the optimal information choice at time 1. I defer to their solution, though with some added complexity due to the change in the densities of payoffs $f$ from multivariate Gaussian to mixture distributed.
-
-The appendix\todo{Add to appendix} shows that the optimal quantity $q^*_j$ that solves (\ref{eq:learning-opt}) takes the form
-
-\newcommand{\shat}{\hat s_j}
-\newcommand{\hShat}{\hat \Sigma_{H,j}}
-\newcommand{\lShat}{\hat \Sigma_{L,j}}
-\newcommand{\hMhat}{\hat \mu_{H,j}}
-\newcommand{\lMhat}{\hat \mu_{L,j}}
-\begin{align}
-    q^*_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat - pr \big)
-\end{align}
-
-\noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only substantive difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the posterior means and variances are weighted by the posterior state probabilities. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
+\textcite{kacperczyk_rational_2016} work backwards by solving the portfolio allocation problem at time 2 first, and then using this solution to determine the optimal information choice at time 1. I defer to their solution, though with some added complexity due to the change in the densities of payoffs $f$ from multivariate Gaussian to mixture distributed. I do not currently have a closed-form solution for prices and thus the whole economy, but I suspect that one exists by allowing for a polynomial function in prices.
 
 I start by defining several types of economies and solving prices conditional on the mean and covariance relationships of each economy. The four types I have cover the qualitative space of two-state economies, in that payoffs differ two states by the combination of means, variances, and correlations. Figure \ref{fig:priors} plots the joint density of payoffs for each economy.
 
@@ -271,25 +259,46 @@ I start by defining several types of economies and solving prices conditional on
     
 \begin{figure}
     \centering
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/economy/baseline/prior.png}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/prior.png}
+        \caption{Baseline}
         \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/economy/a2-mean-shift/prior.png}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/prior.png}
+        \caption{Mean shift}
     \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/economy/a2-meanvar-shift/prior.png}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/prior.png}
+        \caption{Mean and variance shift}
     \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \includegraphics[width=\textwidth]{../plots/economy/more-corr-meanvarshift/prior.png}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/prior.png}
+        \caption{Mean, variance, and correlation shift}
     \end{subfigure}
     \caption{Unconditional joint payoff densities of $f$ in different economies.}
     \label{fig:priors}
 \end{figure}
 
-At present, I am most interested in how different attention allocation impacts investor beliefs and asset prices. I fix attention allocation and observe the time-2 portfolio construction problem faced by investors. Later sections will allow agents to optimize their information choices. I generate $J$ agents, half of which allocate 90\% of their attention to the safer asset 1, and the other half allocates 90\% of their attention to the riskier asset 2. Next, I assign each agent a private signal $\eta_j$ based on their attention allocation. I fix the stochastic supply to its average ($x = \bar x$) to more precisely observe equilibrium conditions.
+At present, I am most interested in how different attention allocation impacts investor beliefs and asset prices. I fix attention allocation and observe the time-2 portfolio construction problem faced by investors. Later sections will allow agents to optimize their information choices. I generate $J$ agents with $K=1$ attention who equally divide their focus among each asset. Next, I assign each agent a private signal $\eta_j$ based on their attention allocation. I fix the stochastic supply to its average ($x = \bar x$) to more precisely observe equilibrium conditions. Note that the conditions above do not necessarily provide insight about the true qualities of equilibrium in my system, as supply is fixed, and agents are not optimizing their attention allocation.
 
-Prices are determined through numerical minimization of the squared difference of the economy from market clearing. Denote the total quantity demanded by investors at price $p$ as $\mathbf{q}(p) = q_1(p) + q_2(p) + \dots q_J(p)$.
+\subsection{Optimal quantity}
+
+Taking first-order conditions of the portfolio choice problem in \ref{eq:learning-opt} yields the optimal quantity $q^*_j$:
+
+\newcommand{\shat}{\hat s_j}
+\newcommand{\hShat}{\hat \Sigma_{H,j}}
+\newcommand{\lShat}{\hat \Sigma_{L,j}}
+\newcommand{\hMhat}{\hat \mu_{H,j}}
+\newcommand{\lMhat}{\hat \mu_{L,j}}
+\begin{align}\label{eq:qstar}
+    q^*_j = \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat - pr \big)
+\end{align}
+
+\noindent where $\shat$ represents the posterior probability of being in the high state by investor $j$. It is worth commenting that the form of the optimal quantity is relatively simple and maintains the general form of strict Gaussian case. The only substantive difference between my $q_j$ and that of papers like \textcite{kacperczyk_rational_2016} is that the posterior means and variances are weighted by the posterior state probabilities. The form of $q_j$ demonstrates that it is trivial to add an arbitrary number of Gaussian clusters to the payoff density, should a modeler wish to approximate increasingly complex joint distributions.
+
+\subsection{Prices}
+
+Prices are determined through numerical minimization of the squared difference of the economy from market clearing at a particular draw of payoffs $f$. Denote the total quantity demanded by investors at price $p$ as $\mathbf{q}(p) = q_1(p) + q_2(p) + \dots q_J(p)$.
 
 \begin{mini}
     {A,B,C}{\big(\mathbf{q}(p) - x\big)'\big(\mathbf{q}(p) - x\big)}
@@ -297,35 +306,118 @@ Prices are determined through numerical minimization of the squared difference o
     \addConstraint{p}{= A + B f + C x}
 \end{mini}
 
-The optimizer will conjecture price parameters $A$, $B$, and $C$, and then calculate all investor's posterior beliefs about the means, variances, and state probabilities conditional on the particular draw of price parameters. If the price parameters are such that net quantities $\mathbf{q}(p) - x$ is highly positive or negative, the conjectured price function cannot be the market clearing price as there exists some assets which are not held by anyone. I use the \todo{Find cite for LBFGS}LBFGS algorithm with automatic differentiation for the gradient\footnote{It has historically been more common to use finite difference gradients, but advances in computation have enabled the faster and more accurate automatic differentiation. \hl{cite Chris' paper?}}. Typically, the numerical approach yields a squared quantity disjoint around $1e^{-22}$, which is approximately exact for most numerical purposes.
+The optimizer will conjecture price parameters $A$, $B$, and $C$, and then calculate all investor's posterior beliefs about the means, variances, and state probabilities conditional on the particular draw of price parameters. If the price parameters are such that net quantities $\mathbf{q}(p) - x$ is highly positive or negative, the conjectured price function cannot be the market clearing price as there exists some assets which are not held by anyone. I use the LBFGS algorithm with automatic differentiation for the gradient. Typically, the numerical approach yields a squared quantity disjoint around $1e^{-22}$, which is approximately exact for most numerical purposes.
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/prior-grid.png}
+        \caption{Baseline}
+        \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/prior-grid.png}
+        \caption{Mean shift}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/prior-grid.png}
+        \caption{Mean and variance shift}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/prior-grid.png}
+        \caption{Mean, variance, and correlation shift}
+    \end{subfigure}
+    \caption{Grid points sampled across the payoff prior density $f$.}
+    \label{fig:prior-grid}
+\end{figure}
+
+
+I solve for the market clearing price for each point on a $25 \times 25$ grid of payoffs drawn from the prior density of the economy. Figure \ref{fig:prior-grid} illustrates grid points sampled on each of the four economies. Since I assume that there is a linear price around each payoff grid point but make no aggregate restrictions across pricing functions, the resulting price function tends towards non-linearity. Economies 1 and 2 have strictly linear pricing functions when solving for prices jointly across all grid points, but the introduction of any correlation between assets in different states cannot be numerically solved. This implies that any analytic pricing function I choose must be non-linear\footnote{One possible analytic form for prices might be an $M$-order polynomial in the non-central moments of $f$:
+
+$$
+p(f, x) = \sum_{m=0}^M \Phi_m f^m + C x 
+$$
+
+This form is attractive, since the non-central moments of each Gaussian component are well-defined. However, investors who observe a price function inclusive of higher moments have significantly more complicated posterior beliefs.
+}.
 
 \begin{table}
+    \caption{Second-order polynomial approximations to the estimated pricing functions. $a$ represents the intercept term of the polynomial. Standard errors are exceptionally small (as is common in polynomial projections) and are suppressed.}
+    \label{tab:poly}
     \begin{tabular}{lcccccc}
         \toprule
         $p_1$ &          $a$ &        $f_1$ &      $f_1^2$ &        $f_2$ &      $f_2^2$ & $f_1\times f_2$\\
-a2-mean-shift &         1.53 &         0.83 &         0.00 &         0.01 &        -0.00 &        -0.00\\
-a2-meanvar-shift &         1.13 &         0.88 &        -0.00 &         0.05 &        -0.00 &        -0.00\\
- a2-var-shift &         1.79 &         0.81 &         0.00 &        -0.01 &         0.00 &         0.00\\
-     baseline &         1.35 &         0.84 &         0.00 &         0.03 &        -0.00 &        -0.00\\
-corr-mean-shift &         1.48 &         0.83 &         0.00 &         0.02 &        -0.00 &        -0.00\\
-    less-corr &         1.50 &         0.84 &         0.00 &         0.02 &        -0.00 &        -0.00\\
-    more-corr &         1.24 &         0.84 &         0.00 &         0.04 &        -0.00 &        -0.00\\
-more-corr-meanshift &         1.24 &         0.82 &         0.00 &         0.08 &        -0.00 &         0.00\\
-more-corr-meanvarshift &        -0.43 &         1.01 &        -0.00 &         0.19 &        -0.00 &        -0.01\\
+     baseline & $        2.38$ & $        0.61$ & $       -0.00$ & $        0.34$ & $       -0.01$ & $       -0.01$\\
+a2-mean-shift & $        3.79$ & $        0.48$ & $        0.01$ & $        0.24$ & $       -0.00$ & $       -0.02$\\
+a2-meanvar-shift & $        2.50$ & $        0.80$ & $       -0.01$ & $        0.17$ & $       -0.00$ & $       -0.01$\\
+more-corr-meanvarshift & $        1.24$ & $        0.66$ & $        0.01$ & $        0.49$ & $       -0.01$ & $       -0.03$\\
 \midrule
         $p_2$ &          $a$ &        $f_1$ &      $f_1^2$ &        $f_2$ &      $f_2^2$ & $f_1\times f_2$\\
-a2-mean-shift &         0.16 &         0.02 &        -0.00 &         0.98 &        -0.00 &        -0.00\\
-a2-meanvar-shift &        -0.63 &        -0.15 &         0.01 &         1.33 &        -0.01 &        -0.01\\
- a2-var-shift &        -0.71 &         0.23 &        -0.01 &         0.98 &        -0.00 &        -0.00\\
-     baseline &         1.29 &         0.02 &         0.00 &         0.87 &         0.00 &        -0.00\\
-corr-mean-shift &         0.24 &        -0.00 &         0.00 &         0.98 &        -0.00 &        -0.00\\
-    less-corr &         1.26 &         0.05 &        -0.00 &         0.87 &         0.00 &        -0.00\\
-    more-corr &         1.28 &         0.02 &         0.00 &         0.86 &         0.00 &        -0.00\\
-more-corr-meanshift &        -0.26 &         0.04 &         0.00 &         1.04 &         0.00 &        -0.01\\
-more-corr-meanvarshift &        -1.45 &         0.15 &        -0.00 &         1.16 &        -0.01 &        -0.01\\
+     baseline & $        2.42$ & $        0.35$ & $       -0.00$ & $        0.60$ & $       -0.00$ & $       -0.01$\\
+a2-mean-shift & $        1.20$ & $        0.22$ & $       -0.01$ & $        0.70$ & $       -0.00$ & $        0.00$\\
+a2-meanvar-shift & $       -0.48$ & $        0.05$ & $        0.00$ & $        1.27$ & $       -0.03$ & $        0.00$\\
+more-corr-meanvarshift & $       -1.94$ & $        0.54$ & $       -0.02$ & $        1.03$ & $       -0.01$ & $       -0.00$\\
 \bottomrule
     \end{tabular}
 \end{table}
+
+Table \ref{tab:poly} summarizes the estimated pricing functions using a polynomial basis approximation. Each entry is the coefficient on the quantity in the column. Table \ref{tab:poly} helps capture the fundamental shape of the pricing function of each asset. Some standard findings apply, in that asset prices are increasing in their own payoffs and generally decreasing in their variance. The negative coefficient on the cross term $f_1 \times f_2$ for asset 1 is consistent with the conclusions of consumption models where high consumption state prices are less sensitive to payoffs. In general, however, the riskier asset 2 is more sensitive to payoffs than is asset 1 across all economies.
+
+\subsection{The attention allocation decision}
+
+With prices available, I can turn to the attention allocation decision. Deciding the optimal ex-ante attention allocation requires understanding the distribution of variance-weighted differences in payoffs and prices. In \textcite{kacperczyk_rational_2016}, the authors derive a closed-form linear price as a function of payoffs $f$ and supply shocks $x$, which allowed the authors to define the ex-ante distribution of expected utility as a non-central $\chi^2$ distribution. Unforunately, I do not have a linear price, but I can still characterize investors' optimal attention allocation decision by simulating payoffs, prices, and private signals.
+
+I simulate the distribution of time 1 utility in (\ref{eq:portfolio-opt}), which can be rewritten using optimal quantities of (\ref{eq:qstar}):
+
+\begin{align}\label{eq:exante}
+    E[U_{j2}] = r W_0 + \frac{1}{2} E_1\bigg[ E_j[f - pr]'\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}E_j[f - pr] \bigg]
+    % \frac{1}{\rho}\big(\shat \hShat + (1-\shat) \lShat\big)^{-1}\big(\shat \hMhat + (1-\shat) \lMhat - pr \big)
+\end{align}
+
+Next, I calculate the utility an investor would receive in each state of the world for a different "portfolio" of attention allocation. Note that (\ref{eq:exante}) is an implicit function of the attention matrix $\Sigma_j$. Define the function $\phi(\theta_k) = E[U_{j2}(\theta_k)]$ where $\theta_k \in [0,1]$ indicates the proportion of attention allocated to asset 1, and $1-\theta_k$ indicates the attention allocated to asset 2. The next section attempts to interpret the attention allocation function $\phi(\theta_k)$. $\phi(\theta_k)$ summarizes the ex-ante optimization problem faced by investors.
+
+\section{Analysis}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/baseline/optimality_functions.png}
+        \caption{Baseline}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-mean-shift/optimality_functions.png}
+        \caption{Mean shift}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/a2-meanvar-shift/optimality_functions.png}
+        \caption{Mean and variance shift}
+    \end{subfigure}
+    \begin{subfigure}{0.45\textwidth}
+        \includegraphics[width=\textwidth]{../plots/params/more-corr-meanvarshift/optimality_functions.png}
+        \caption{Mean, variance, and correlation shift}
+    \end{subfigure}
+    \caption{Plots of the ex-ante utility function $\phi(\theta_k)$ for each grid point $f$.}
+    \label{fig:optimality_functions}
+\end{figure}
+
+The attention allocation function $\phi(\theta_k)$ is plotted in Figure \ref{fig:optimality_functions}, assuming that all other investors choose $\phi(0.5)$. An investor in a two-asset economy will select $\theta_k$ to maximize $\phi(\theta_k)$. As in \textcite{kacperczyk_rational_2016}, the investor's optimal strategy is usually to allocate all or none of their attention to any particular asset, though the functions that yield this conclusion in my setting are not as simplistic. 
+
+All four panels of Figure \ref{fig:optimality_functions} indicate that the optimal attention allocation decision is on the basis of the \textit{substitutibility} of information -- there is value in knowing what others do not. The substitutibility of information in attention models is not new (see \textcite{van_nieuwerburgh_information_2010}).
+
+What is new is that the complementary action (choosing the same information set as others) is no longer a strictly dominated one. In the baseline case in Panel (a), the optimal attention allocation is to set $\theta_k = 0$ or $\theta_k=1$, with the lowest value of $\phi(\theta_k)$ taking place where all other investors are set ($\theta_k = 0.5$). Panels B,C, and D do not share this quadratic form, and this may indicate that some measure of complementary action should be rational when the economy is more complex. My (speculative) conclusion is driven most starkly by the minor "hump" in the center of the functions of Panel (d). The "hump" in the middle indicates that, as other investors allocate their attention to all asset 1 or asset 2, eventually the middle hump will be the highest point and newly allocating investors will choose to cluster with others. Investors may prefer to have similar information sets to others such that they do not trade with the asymmetrically informed. 
+
+Note that Figure \ref{fig:optimality_functions} indicates that the economy is \textbf{not} in equilibrium. The ex-ante utility function $\phi(\theta_k)$ should be a flat function in equilibrium, as otherwise investor $j$ could deviate and choose another $\theta_k$ to maximize their ex-ante utility. A true equilibrium could be found by adjusting the assumption that all other investors set $\phi(0.5)$ to another quantity, and then calculating any particular investor's incentive to deviate\footnote{The numerical solutions to \textcite{kacperczyk_rational_2016} do just this by allocating attention, noting that some investors would deviate, and then reallocating attention until no investors are willing to deviate.}.
+
+\begin{lemma}
+    $p^*(f,x)$ is an equilibrium pricing function if there exists a $\hat \theta_k$ for all other investors such that investor $j$ cannot profitability change their ex-ante attention allocation, i.e. $\derivative{\phi(\theta_k)}{\theta_k} = 0$ everywhere.
+\end{lemma}
+
+Importantly, Figure \ref{fig:optimality_functions} suggests the possibility that the existence of a symmetric equilibrium where all investors choose the same attention cannot exist for even moderately complex economies\footnote{\textcite{hellwig_knowing_2009} is consistent with my conjecture, in that games with substitutibility produce heterogeneous beliefs.}. The derivative of $\phi(\theta_k)$ for the complex economies (Panels B-D) are non constant at different points, while the baseline economy of \textcite{kacperczyk_rational_2016} in Panel A has equivalent derivatives at all possible payoffs. The lack of symmetric equilibria is important because it rules out simplistic outcomes and necessitates an equilibrium where some informed investors engaging in attention herding behavior, as others attempt to profit by becoming extremely informed about one asset or the other. 
+
+Such an equilibrium has important ramifications for investors who may tend to fall into one group in the other -- for example, risk-averse funds may herd while more risk-tolerant funds may become asymmetrically informed. In this situation, the risk-tolerant funds would extract an attention-based rent from risk-averse funds. Aggregate disagreement about economic conditions will also be higher as distinct groups select different attention portfolios. More generally, my interpretations of the above indicate a complex economy would produce (a) specialists who understand asset individual payoffs well, and (b) generalists who attempt to consolidate the specialists' information from prices.
+
+It may further be the case that a sufficiently complex economy can no longer support informative prices. Previous works (\cite{admati_noisy_1985, hellwig_1980,kacperczyk_rational_2016} among many others) generally conclude that prices yield information to investors and enhance the welfare value of accurate market prices. The difficulty with this is that, as prior payoffs become more and more complex, the information channel capacity of prices to convey payoff information shrinks. The combination of heterogeneous agent beliefs and uninformative prices mean that prices could exhibit severe excess volatility and disjointed expected returns even with a continuum of rational Bayesian agents. Prices may be too small a channel to convey exact information (in a NREE sense) in complex economies.
+
+Regardless, the (temporary) lack of a formal equilibrium and closed-form solution restrict my ability to understand attention allocation across complex economies. Early numerical results are indicative of a non-trivial departure from basic information choice models, in that it is not always optimal to specialize, prices may be highly uninformative, and investor disagreement may play a larger role in observed asset dynamics.
 
 \appendix
 \pagebreak

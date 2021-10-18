@@ -5,20 +5,21 @@ using Polynomials
 using LinearAlgebra
 using GLM
 using Printf
+using Statistics
 
 include("parameters.jl")
 include("posterior.jl")
 
 things = [
     "baseline",
-    # "a2-mean-shift",
-    # "a2-meanvar-shift",
-    # "more-corr-meanvarshift",
+    "a2-mean-shift",
+    "a2-meanvar-shift",
+    "more-corr-meanvarshift",
 ]
 
 # things = replace.(readdir("data/individuals/"), ".csv" => "")
 
-sort!(things)
+# sort!(things)
 colnames = Symbol[:intercept]
 varcols = [:A, :B, :C, :price, :payoff, :true_mu_1, :true_mu_2, :true_sigma_1, :true_sigma_2]
 
@@ -112,6 +113,12 @@ function basis(x, cnms, order=size(x,2); crossterm=false)
             end
         end
     end
+
+    # # Normalize
+    # bvar = std(B, dims=1)
+    # display(bvar)
+    # B = B ./ bvar
+
     # return B, colnames
     return DataFrame(B, colnames)
 end
@@ -264,16 +271,16 @@ open("results/price-functions.tex", write=true, create=true, append=false) do io
 end
 
 
-for (f1, f2, thing) in zip(p1s, p2s, things)
-    pfun = polyfunction([f1, f2])
-    parameters = plookup(thing)
-    it, qs = generate_grid(parameters, 5)
+# for (f1, f2, thing) in zip(p1s, p2s, things)
+#     pfun = polyfunction([f1, f2])
+#     parameters = plookup(thing)
+#     it, qs = generate_grid(parameters, 5)
     
-    for ff in it
-        f = [fi for fi in ff]
-        for θk in 0.01:0.01:0.999
-            Σj = diagm([inv(θk * parameters.K), inv((1-θk) * parameters.K)])
-            println(thing, " ", f, " ", Σj)
-        end
-    end
-end
+#     for ff in it
+#         f = [fi for fi in ff]
+#         for θk in 0.01:0.01:0.999
+#             Σj = diagm([inv(θk * parameters.K), inv((1-θk) * parameters.K)])
+#             println(thing, " ", f, " ", Σj)
+#         end
+#     end
+# end
