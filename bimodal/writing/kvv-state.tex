@@ -57,13 +57,15 @@ url=false]{biblatex}
 
 A strand of economic literature studies how limited attention and cognitive constraints guide economic choices. In these papers, researchers examine how prices can be used to aggregate private signals observed by attention-constrained investors. 
 
-The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that rational investors will allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming in these papers is that the economies are extraordinarily simplistic and may misunderstand the role of information choice can be when investors are confronted with complex ex-ante economic environments.
+The general conclusion of these papers, such as \textcite{kacperczyk_rational_2016} or \textcite{peng_investor_2006}, is that rational investors will allocate more attention to a common component of variation in payoffs as the variance of that common component rises. A shortcoming of these attention papers is that the simplistic economies employed force investors to behave uniformly in how they allocate their attention. A more complex economic system may rule out homogeneous attention allocation and explain how there might exist a mixture of informational generalists and specialists, which is difficult to rationalize with existing models of attention allocation.
 
-The joint density of asset payoffs is complex. It is high dimensional, potentially ex-ante multimodal, and has non-trivial higher moments such as skewness and kurtosis. The density depends on laws, competition, natural disasters, expectations, monetary policy, and any number of other stochastic values. Importantly, investors generally have (or can conjecture) priors about what might happen to the probabilities of a given set of payoffs in response to a change in fundamental economic conditions. The complexity of joint payoffs suggests that attention should be precisely allocated to assets that inform investors the most about the joint density. 
+The joint density of asset payoffs is complex. It is high dimensional, potentially ex-ante multimodal, and has non-trivial higher moments. The density depends on laws, competition, natural disasters, expectations, monetary policy, culture, and any number of other stochastic values. Importantly, investors generally have (or can conjecture) priors about what might happen to the probabilities of a given set of payoffs in response to a change in fundamental economic conditions. The complexity of joint payoffs suggests that a Bayesian investor  should construct signals so as to maximize their ability to design an asset portfolio.
 
 Consider a relatively small industry that has exposure to trade tariffs where it is uncertain whether tariffs will be implemented. Tariffs have a high magnitude effect on the industry but a diffuse effect on all payoffs. Is it rational for the investor to allocate attention to representative firms in this industry to better form forecasts of the tariffs? Certainly, doing so would allow the investor to understand the industry by paying the opportunity cost to understand some other signal that might tell the investor more about all payoffs with a greater precision. The investor's ultimate goal is to form a portfolio of assets that satisfy their utility functions, so they must consider the universe of potential investments and how their payoffs relate to one another.
 
-I utilize a distributional assumption (the Gaussian mixture distribution) to approximate complex joint densities while maintaining the ease of a single joint-Gaussian framework as in \textcite{kacperczyk_rational_2016}. Extending the joint density of payoffs to a more complex distribution that incorporates state probabilities allows me to analyze how complexity drives attention allocation decisions, as well as the resulting portfolio choice problem.
+I utilize a distributional assumption (the Gaussian mixture distribution) to approximate complex joint densities while maintaining the ease of a single joint-Gaussian framework as in \textcite{kacperczyk_rational_2016}. Extending the joint density of payoffs to a more complex distribution that incorporates state probabilities allows me to analyze how complexity drives attention allocation decisions, as well as the resulting portfolio choice problem. 
+
+The Gaussian mixture model can approximate any joint density. I employ the notion of state, good and bad, but in principle "state" simply identifies a locally Gaussian region of the whole joint density. Working with state-conditional Gaussians allows me to examine how information is allocated in an arbitrary joint density, while still maintaining some of the ease of a single Gaussian distribution.
 
 The information and portfolio choice problems essentially reduce to a single question: how useful is knowledge about the state? First, the usefulness of state knowledge depends on the choices of other investors. Public information contained in prices can be used to infer the information sets of other investors (\textcite{grossman_existence_1977}). Second, the usefulness of state information depends critically on how different the states are in their conditional densities. If the good state and bad state are extremely different, it may pay for an investor to be asymmetrically informed about state even if they are less informed about specific payoffs.
 
@@ -73,11 +75,11 @@ Section \ref{sec:model} describes a modified version of the model employed by \t
 
 \section{Model framework}\label{sec:model}
 
-Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016}, which introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
+Much of my notation and model structure follows from \textcite{kacperczyk_rational_2016}, who introduce attention constraints and information choice to the multiasset noisy rational equilibrium model of \textcite{admati_noisy_1985}.
 
 The model has three periods. In time 1, informed investors allocate their attention across $n$ signals. At time 2, all investors construct portfolios. At time 3, all investors receive payoffs.
 
-I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets. I add the assumption that there is an  arbitrary factor structure to payoffs. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state\footnote{I employ two-state mixture model, but in principle any number of mixture components can be employed with only minor modifications to the model.} is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The density of $s$ is written
+I assume, as in \textcite{kacperczyk_rational_2016}, that there are $n$ risky assets with stochastic supply $x=\overline x + \epsilon_x$, with $\epsilon_x \sim \Gauss(0, \Sigma_x)$. I allow for an arbitrary factor structure to payoffs. Assets $1,2,\dots,n$ represent specific assets with idiosyncratic shocks. The key difference between my paper and \textcite{kacperczyk_rational_2016} is that the economic state\footnote{I employ two-state mixture model, but in principle any number of mixture components can be employed with only minor modifications to the model.} is a stochastic variable that is not known by investors. The economy is in state $s \in {H, L}$, where $s=H$ represents a "good" state with probability $\pi$ and $s=L$ represents a "bad" state with probability $1-\pi$. The mass of $s$ is written
 
 $$
 P(s) = \begin{cases}
@@ -90,8 +92,8 @@ The good and bad states dictate the mean and covariance of asset payoffs. Payoff
 
 \begin{align}
     f_i &= \mu_{i,s} + z_i\\
-    z &\mid s = [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s) \\
-    f &\mid s \sim \Gauss(\mu_{s}, \Sigma_s)
+    z &\mid s = [z_1,z_2, \dots, z_n]' \sim \Gauss(0, \Sigma_s)
+    % f &\mid s \sim \Gauss(\mu_{s}, \Sigma_s)
 \end{align}
 
 The mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the  $n\times n$ variance-covariance matrix of payoff shocks $\Sigma_s$ are functions of the unobserved economic state. When investors are allowed to receive signals about the underlying shocks $z$, those same signals will allow investors to assign a probability to the underlying state and the associated payoff structure.\footnote{\textcite{kacperczyk_rational_2016} utilize a transformation of asset payoffs to the corresponding risk factor payoffs -- in my case, the eigen-decomposition $\Sigma_s = \Gamma_s \Lambda_s \Gamma_s'$ for $s \in {H,L}$ yields Arrow-Debreu synthetic securities on risk factors:
@@ -101,9 +103,9 @@ The mean payoff vector $\mu_s = [\mu_{1,s},\mu_{2,s},\dots,\mu_{n,s}]'$ and the 
 \end{align}
 
 \noindent Unfortunately, I cannot proceed with the \textcite{kacperczyk_rational_2016} solution method, which requires an additional transformation of risk factor prices $\tilde p = \Gamma^{-1}p$ and risk factor quantities $\tilde q = \Gamma^{-1} q$ for some eigenvector matrix $\Gamma$. My model only permits the orthogonalization of the prior variance $\Sigma$, but in general the transforms on $\tilde q$ and $\tilde p$ will remain correlated conditional on state.
-}
+} More compactly, the distribution of payoffs conditional on the state is multivariate Gaussian: $f \mid s \sim \Gauss(\mu_{s}, \Sigma_s)$.
 
-Note that the unconditional payoff density $P(f)$ is a two-component Gaussian mixture distribution with mixture weights $\pi$ and $1-\pi$. The density function is written
+The joint density $P(f,s)$ is referred to as a \textit{Gaussian mixture distribution}, with two mixture weights $\pi$ and $1-\pi$. The marginalized density of payoffs $f$ is written
 
 \begin{align}
     P(f) \sim \pi \Gauss(f \mid \mu_H, \Sigma_H) + (1-\pi) \Gauss (f \mid \mu_L, \Sigma_L)
@@ -124,8 +126,7 @@ The economy is populated by atomistic investors $j$ with unit mass ($j \in [0, 1
 A portion of investors (the \textit{informed}) receive private signals $\eta_j$ about time 3 payoffs $f$. Signals take the form of additive Gaussian noise around the true payoff, where the precision of the noise is determined by investor attention allocation. The form of a private signal is
 
 \begin{align}
-    \eta_j &\sim \Gauss(f, \Sigma_{\eta,j}), \\
-    \text{ or } \eta_j &= f + \epsilon_j, \quad \epsilon_j \sim \Gauss(0, \Sigma_{\eta_j})
+    \eta_j &\sim \Gauss(f, \Sigma_{\eta,j})
 \end{align}
 
 \noindent The matrix $\Sigma_{\eta_j}$ is a diagonal matrix with entries $K_{ij}^{-1}$. $K_{ij}$ is the total amount of attention given to signal $i$ by investor $j$. Higher values of $K_{ij}$ imply lower variance of $\epsilon_{ij}$, and thus a more accurate signal of $f_i$, as well as more precise signals of whichever assets are correlated with asset $i$.
@@ -162,7 +163,7 @@ The investor's information choice problem is to maximize expected time-1 utility
 Finally, markets must clear at price $p$ and quantities $q_j$, leading to the traditional market clearing condition
 
 \begin{align}
-    \int_j{q_j(p)} = \overline x + x
+    \int_j{q_j(p)} = \overline x + \epsilon_x
 \end{align}
 
 \noindent Market clearing requires that quantities and prices be such that all supply is allocated to an investor. I now turn to the formal declaration of an equilibrium in my setting, as in \textcite{breon-drish_existence_2015}.
@@ -252,9 +253,9 @@ I start by defining several types of economies and solving prices conditional on
     
     \item \textbf{Economy 2: mean shift}. The mean shift economy allows the mean payoff for asset 2 to move from $+2$ (good state) to $-2$ (bad state), while asset 1 has the same mean payoff of $1$ in each state. The covariance matrix of payoffs is the identity matrix in both states.
 
-    \item \textbf{Economy 3: mean and variance shift}. Economy 3 is intended to capture cases where an asset varies in boht mean and variance between states. Asset 2 has a mean of $+2$ and a variance of $1$ in the good state, and a mean of $-2$ and a variance of $5$ in the bad state. Asset 1 remains a state-independent asset.
+    \item \textbf{Economy 3: mean and idiosyncratic variance shift}. Economy 3 is intended to capture cases where an asset varies in both mean and variance between states. Asset 2 has a mean of $+2$ and a variance of $1$ in the good state, and a mean of $-2$ and a variance of $5$ in the bad state. Asset 1 remains a state-independent asset.
     
-    \item \textbf{Economy 4: mean, variance, and correlation shift}. Economy 4 makes asset 1 and 2 payoffs positively correlated in the bad state. Asset two maintains its $+2/-2$ means and $1/5$ variances.
+    \item \textbf{Economy 4: mean, idiosyncratic variance, and correlation shift}. Economy 4 makes asset 1 and 2 payoffs positively correlated in the bad state. Asset two maintains its $+2/-2$ means and $1/5$ variances.
 \end{itemize}
     
 \begin{figure}
