@@ -701,5 +701,24 @@ Ex-ante expected utility:
         \biggr) \tilde q_j
 \end{align*}
 
+Prices:
+
+\begin{align*}
+    M_j &= \hat s_j \hat \mu_{Hj} + (1 - \hat s_j) \hat \mu_{Lj} \\
+    V_j &= \hat s_j \hat \Sigma_{Hj} + (1 - \hat s_j) \hat \Sigma_{Lj} \\
+    \overline V &= \int V_j^{-1} dj 
+\end{align*}
+
+Derivatives: 
+
+\begin{align*}
+    p(\epsilon_x,f) &= \overline M - \rho \overline V^{-1} (\overline x + \epsilon_x) \\
+    \partialderivative{p(x,f)}{\epsilon_x} &= -\rho \overline V^{-1} \\
+    \partialderivative{p(x,f)}{f} &= \partialderivative{\overline M}{f} 
+        - \rho \bigg(
+            \overline V^{-1} + 
+            \frac{\partial \overline V^{-1}}{\partial f} (\overline x + \epsilon_x)\bigg)
+\end{align*}
+
 
 \end{document}
