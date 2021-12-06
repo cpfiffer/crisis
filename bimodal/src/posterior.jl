@@ -39,6 +39,20 @@ function prior_mixture(params)
     return mm
 end
 
+function prior_s(params, f)
+    @unpack μ1, Σ1, μ2, Σ2, true_s = params
+
+    g1 = MvNormal(μ1, Σ1)
+    g2 = MvNormal(μ2, Σ2)
+
+    prob1 = logpdf(g1, f) + log(true_s[1])
+    prob2 = logpdf(g2, f) + log(true_s[2])
+
+    s_est = prob1 - logsumexp(prob1, prob2)
+
+    return exp(s_est)
+end
+
 function posterior(f, η, Σj, params)
     # Construct signal distribution
     sd = signal(f, Σj)
