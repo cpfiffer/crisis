@@ -36,6 +36,22 @@ two_meanshift = (
     do_seed = true
 )
 
+similar_assets = (
+    sim_name = "means-only",
+    μ1 = [8.0, 12.0],
+    μ2 = [8.0, 12.0],
+    Σ1 = [1.0 0; 0 1.0],
+    Σ2 = [1.0 0; 0 1.0],
+    x_bar = [0.0, 0.0],
+    Σ_x = [1.0 0.0; 0.0 1.0],
+    J = all_j,
+    K = all_k,
+    ρ = 1,
+    true_s = [0.5, 0.5],
+    seed = 1,
+    do_seed = true
+)
+
 ## μ1[2] ≠ μ2[2]
 corr_test = (
     sim_name = "corr-mean-shift",
@@ -159,6 +175,7 @@ morecorr_meanvar = (
 param_set = [
     baseline_params,
     two_meanshift,
+    similar_assets,
     # two_varshift,
     # corr_test,
     two_meanvarshift,

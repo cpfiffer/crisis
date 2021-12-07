@@ -1,8 +1,8 @@
 include("posterior.jl")
 
 # Set default parameter set
-# paramd = baseline_params
-paramd = two_meanshift
+paramd = baseline_params
+# paramd = two_meanshift
 # paramd = morecorr_meanvar
 # paramd = morecorr
 # paramd = lesscorr
@@ -89,7 +89,7 @@ a2_y = map(z -> z[2], a2s) |> vec
 between(x, l, u) = u >= x && x >= l
 xs, ys, zs = prices(0.1, 20)
 
-l, u = 5, 15
+l, u = 7, 13
 
 zs = zs[between.(xs, l, u), between.(ys, l, u)]
 xs = xs[between.(xs, l, u)]
