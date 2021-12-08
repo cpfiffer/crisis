@@ -1056,21 +1056,21 @@ function plot_vals(params, val; num_levels=25)
 end
 
 
-baseline_true = [
-    5.893040895578876,
-    6.183641522523689,
-    0.39049948394149364,
-    0.01785386560955143,
-    0.017853865609551014,
-    0.3624665268018901,
-    -1.1095342102205183,
-    0.26829668775657844,
-    0.23892382548448576,
-    -1.4985840910533748
-]
+# baseline_true = [
+#     5.893040895578876,
+#     6.183641522523689,
+#     0.39049948394149364,
+#     0.01785386560955143,
+#     0.017853865609551014,
+#     0.3624665268018901,
+#     -1.1095342102205183,
+#     0.26829668775657844,
+#     0.23892382548448576,
+#     -1.4985840910533748
+# ]
 
-for p in param_set[5:end]
-    println(p.sim_name)
-    val = equilibrium_grid(p, 5, θ_guess=baseline_true)
-    plot_vals(p, val)
-end
+# for p in param_set[5:end]
+#     println(p.sim_name)
+#     val = equilibrium_grid(p, 5, θ_guess=baseline_true)
+#     plot_vals(p, val)
+# end

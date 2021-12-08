@@ -1,11 +1,15 @@
 include("posterior.jl")
 
 # Set default parameter set
-paramd = baseline_params
-# paramd = two_meanshift
+# paramd = baseline_params
+paramd = two_meanshift
 # paramd = morecorr_meanvar
 # paramd = morecorr
 # paramd = lesscorr
+# paramd = similar_assets
+# paramd = corr_test
+# paramd = morecorr_meanvar_s
+# paramd = complex_params(0.1)
 
 # Generate prior density
 mixture = prior_mixture(paramd)
@@ -18,16 +22,44 @@ grid = [[a1, a2] for a1 in a1_range, a2 in a2_range]
 gridx = map(z -> z[1], grid)
 gridy = map(z -> z[2], grid)
 
-# Generate Jacobians at each point
-function jac(x; γ=1)
-    @unpack K = paramd
-    prob = prior_s(paramd, x)
+# Create attention matrix
+convec(x, p) = [x * p, x * (1-p)]
+# Σ_bar = diagm(convec(all_k, 0.5))
+# Σ_bar = diagm(convec(all_k, 0.1))
+Σ_bar = diagm(convec(all_k, 0.9))
 
-    point_entropy = -(prob * log(prob) + (1-prob) * log(1-prob))
+# Generate Jacobians at each point
+function jac1(x; γ=1)
+    @unpack μ1, Σ1, μ2, Σ2, true_s, K = paramd
+
+    prob = prior_s(paramd, x)
     e_f = mean(mixture)
     diff = x - e_f
 
-    return (diff * diff') .* 1/(γ) .* point_entropy
+    return (diff * diff') .* 1/(γ)# .* point_entropy
+    # return Σ_bar * (diff * diff') .* 1/(γ) .* point_entropy
+end
+
+function jac(x; γ=1)
+    @unpack μ1, Σ1, μ2, Σ2, true_s, K = paramd
+
+    prob = prior_s(paramd, x)
+    entr = -(prob * log(prob) + (1-prob) * log(1-prob))
+
+    d1 = x - μ1
+    d2 = x - μ1
+
+    diff1 = d1 * d1'
+    diff2 = d2 * d2'
+
+    V1 = diff1 - Σ1
+    V2 = diff2 - Σ2
+
+    Vdiff1 = eigen(V1).values |> diagm
+    Vdiff2 = eigen(V2).values |> diagm
+
+    return 1/γ * (convex_combo(prob, V1, V2) + convex_combo(prob, diff1, diff2))
+    # return 1/γ * (convex_combo(prob, Vdiff1, Vdiff2) + convex_combo(prob, diff1, diff2))
 end
 
 # magnitude(x) = sum(x .^ 2)
@@ -87,7 +119,7 @@ a2_y = map(z -> z[2], a2s) |> vec
 # quiver!(vec(gridx), vec(gridy), quiver=(a2_x, a2_y))
 
 between(x, l, u) = u >= x && x >= l
-xs, ys, zs = prices(0.1, 20)
+xs, ys, zs = prices(0.05, 20)
 
 l, u = 7, 13
 
@@ -117,13 +149,13 @@ ep2 = sum(prior_mat .* p2)
 @info "Expected prices" ep1 ep2
 
 # Calculate expected returns
-er1 = (p1 .- ep1)
-er2 = (p2 .- ep2)
-V = cov([vec(er1) vec(er2)])
+# er1 = (p1 .- ep1)
+# er2 = (p2 .- ep2)
+# V = cov([vec(er1) vec(er2)])
 
-surprise1 = density(vec(er1))
-surprise2 = density(vec(er2))
-plot(surprise1, surprise2)
-display(V)
+# surprise1 = density(vec(er1))
+# surprise2 = density(vec(er2))
+# plot(surprise1, surprise2)
+# display(V)
 
 # @info "Expected returns" er1 er2
