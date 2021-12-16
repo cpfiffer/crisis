@@ -834,7 +834,6 @@ function equilibrium_grid(
                     # dsigma = FiniteDiff.finite_difference_gradient(cpsigma, p)
 
                     gg = map(l -> ForwardDiff.value.(cpsigma([l[1], l[2]])), f_grid)
-                    display(gg)
 
                     total_q += q
                 catch e
@@ -899,6 +898,7 @@ function equilibrium_grid(
     entropy_lower = []
     entropy_upper = []
     all_excess = []
+    all_pvars = []
     dfs = DataFrame[]
     f = zeros(n_assets)
     a,b,c = price_matrices(result.minimizer, n_assets)
@@ -924,6 +924,10 @@ function equilibrium_grid(
             )
             push!(diffs, f - p)
 
+            # function pvar_grid(f, p, A, B, C, x, params; N=1000)
+            pvar = pvar_grid(f, p, a, b, c, x, params)
+            push!(all_pvars, pvar)
+
             if !ismissing(df)
                 push!(disagg, sum(df.s_hat .^ 2))
                 push!(kls, mean(df.kl))
@@ -945,6 +949,7 @@ function equilibrium_grid(
             push!(kls_var, missing)
             push!(entropy_upper, missing)
             push!(entropy_lower, missing)
+            push!(all_pvars, missing)
         end
     end
     val = (
@@ -958,6 +963,7 @@ function equilibrium_grid(
         entropy_upper=entropy_upper,
         entropy_lower=entropy_lower,
         excess=all_excess,
+        all_pvar=all_pvars
     )
     CSV.write("data/individuals/$(params.sim_name).csv", vcat(dfs...))
 
@@ -998,9 +1004,8 @@ end
 # z = equilibrium(two_meanshift, store=false, finalplot=false, f=[0.5,1])
 # _, (a2,b2,c2) = equilibrium(two_meanshift, store=false, finalplot=false, f=[1.0,0.5])
 
-function generate_grid(params, steps, N=1_000_000)
+function generate_grid(params, steps, N=1_000_00)
     m = prior_mixture(params)
-    N = 1_000_000
     draws = hcat(rand(m, N))
     dline = div(N, steps)
 
@@ -1034,17 +1039,18 @@ function plot_vals(params, val; num_levels=25)
     savefig(density(map(x -> ismissing(x) ? missing : x[1], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-1.png")
     savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-2.png")
     savefig(density(map(x -> ismissing(x) ? missing : x[2], val.excess), levels=num_levels, xlabel="Asset 2", ylabel="Asset 1", linecolor = :match), "$ps/excess-2.png")
+
     # savefig(scatter(xs, ys, color=val.best_attention, levels=num_levels, xlabel="Asset 2", ylabel="Asset 1"), "$ps/optimal_attention.png")
-    savefig(StatsPlots.histogram(val.best_attention), "$ps/optimal_attention_histogram.png")
+    # savefig(StatsPlots.histogram(val.best_attention), "$ps/optimal_attention_histogram.png")
 
-    !ispath("$ps/attentiongrids/") && mkpath("$ps/attentiongrids/")
-    for (k,v) in val.grids
-        savefig(StatsPlots.contour(xs, ys, v, title = "Attention $k"), "$ps/attentiongrids/$k.png")
-    end
+    # !ispath("$ps/attentiongrids/") && mkpath("$ps/attentiongrids/")
+    # for (k,v) in val.grids
+    #     savefig(StatsPlots.contour(xs, ys, v, title = "Attention $k"), "$ps/attentiongrids/$k.png")
+    # end
 
-    xvals = map(z -> z.attention, val.all_pvar)
-    yvals = map(z -> z.expectation, val.all_pvar)
-    points = map(z -> string(z.payoff), val.all_pvar)
+    xvals = map(kk -> map(z -> z.attention, kk), val.all_pvar)
+    yvals = map(kk -> map(z -> z.expectation, kk), val.all_pvar)
+    points = map(kk -> map(z -> string(z.payoff), kk), val.all_pvar)
     display([xvals yvals points])
     StatsPlots.plot(xvals, yvals, legend=false, group=points)
     savefig("$ps/optimality_functions.png")
@@ -1056,21 +1062,21 @@ function plot_vals(params, val; num_levels=25)
 end
 
 
-# baseline_true = [
-#     5.893040895578876,
-#     6.183641522523689,
-#     0.39049948394149364,
-#     0.01785386560955143,
-#     0.017853865609551014,
-#     0.3624665268018901,
-#     -1.1095342102205183,
-#     0.26829668775657844,
-#     0.23892382548448576,
-#     -1.4985840910533748
-# ]
+baseline_true = [
+    5.893040895578876,
+    6.183641522523689,
+    0.39049948394149364,
+    0.01785386560955143,
+    0.017853865609551014,
+    0.3624665268018901,
+    -1.1095342102205183,
+    0.26829668775657844,
+    0.23892382548448576,
+    -1.4985840910533748
+]
 
-# for p in param_set[5:end]
-#     println(p.sim_name)
-#     val = equilibrium_grid(p, 5, θ_guess=baseline_true)
-#     plot_vals(p, val)
-# end
+for p in [similar_assets] #param_set
+    println(p.sim_name)
+    val = equilibrium_grid(p, 5, θ_guess=baseline_true)
+    plot_vals(p, val)
+end

@@ -209,12 +209,12 @@ param_set = [
     baseline_params,
     two_meanshift,
     similar_assets,
-    # two_varshift,
-    # corr_test,
+    two_varshift,
+    corr_test,
     two_meanvarshift,
-    # morecorr,
-    # lesscorr,
-    # morecorr_mean,
+    morecorr,
+    lesscorr,
+    morecorr_mean,
     morecorr_meanvar
 ]
 
